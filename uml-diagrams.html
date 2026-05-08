@@ -1,0 +1,2391 @@
+﻿<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Biá»ƒu Äá»“ UML â€“ Há»‡ Thá»‘ng UniCompare</title>
+  <script src="https://cdn.jsdelivr.net/npm/pako@2.1.0/dist/pako.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', Arial, sans-serif; background: #eef2f7; padding: 24px; }
+    h1 { text-align: center; color: #1a39ac; padding: 20px; background: white; border-radius: 10px;
+         box-shadow: 0 2px 8px rgba(0,0,0,.1); margin-bottom: 24px; font-size: 22px; }
+    nav { background: white; border-radius: 10px; padding: 16px 24px; margin-bottom: 28px;
+          box-shadow: 0 2px 8px rgba(0,0,0,.1); }
+    nav h2 { font-size: 15px; color: #1a39ac; margin-bottom: 10px; }
+    nav ol { padding-left: 20px; font-size: 13px; color: #333; line-height: 1.9; }
+    nav a { color: #1a39ac; text-decoration: none; }
+    nav a:hover { text-decoration: underline; }
+    .uc { background: white; border-radius: 12px; margin-bottom: 36px;
+          box-shadow: 0 2px 10px rgba(0,0,0,.1); overflow: hidden; }
+    .uc-hdr { background: linear-gradient(135deg, #1a39ac, #2563eb); color: white;
+              padding: 14px 22px; font-size: 16px; font-weight: 700; }
+    .uc-body { padding: 20px; }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    .box { border: 1px solid #bdd2f5; border-radius: 8px; overflow: hidden; }
+    .box-hdr { background: #dbeafe; color: #1e3a8a; padding: 9px 14px;
+               font-weight: 600; font-size: 13px; border-bottom: 1px solid #bdd2f5; }
+    .box-body { padding: 12px; overflow-x: auto; }
+    .puml-img { max-width: 100%; height: auto; display: block; }
+    .puml-loading { text-align: center; padding: 40px 10px; color: #888; font-style: italic; font-size: 13px; }
+    @media (max-width: 900px) { .row { grid-template-columns: 1fr; } }
+    @media print { body { background: white; } .uc { box-shadow: none; border: 1px solid #ccc; page-break-inside: avoid; } }
+  </style>
+</head>
+<body>
+
+<h1>ðŸ“Š Biá»ƒu Äá»“ UML â€“ Há»‡ Thá»‘ng UniCompare</h1>
+
+<nav>
+  <h2>Má»¥c Lá»¥c</h2>
+  <ol>
+    <li><a href="#uc1">Use Case 1: ÄÄƒng KÃ½ TÃ i Khoáº£n (Sign Up)</a></li>
+    <li><a href="#uc2">Use Case 2: TÃ¬m Kiáº¿m TrÆ°á»ng Äáº¡i Há»c (Search University)</a></li>
+    <li><a href="#uc3">Use Case 3: Xem ThÃ´ng Tin Chi Tiáº¿t TrÆ°á»ng (View Detailed University Info)</a></li>
+    <li><a href="#uc4">Use Case 4: Lá»c TrÆ°á»ng Äáº¡i Há»c (Filter Universities)</a></li>
+    <li><a href="#uc5">Use Case 5: Xem Danh SÃ¡ch TrÆ°á»ng (View List of Universities)</a></li>
+    <li><a href="#uc6">Use Case 6: So SÃ¡nh TrÆ°á»ng Äáº¡i Há»c (Compare Universities)</a></li>
+    <li><a href="#uc7">Use Case 7: Quáº£n LÃ½ TÃ i Khoáº£n (Manage Account)</a></li>
+    <li><a href="#uc8">Use Case 8: Quáº£n LÃ½ Há»c Váº¥n (Manage Academic Background)</a></li>
+    <li><a href="#uc9">Use Case 9: Chat Vá»›i Chatbot (Chat to Chatbot)</a></li>
+    <li><a href="#uc10">Use Case 10: ÄÄƒng Nháº­p (Log In)</a></li>
+    <li><a href="#uc11">Use Case 11: Duy TrÃ¬ TÃ i Khoáº£n â€“ Admin (Maintain Account)</a></li>
+    <li><a href="#uc12">Use Case 12: Duy TrÃ¬ TrÆ°á»ng Äáº¡i Há»c â€“ Admin (Maintain Universities)</a></li>
+    <li><a href="#uc13">Use Case 13: View Scholarship List</a></li>
+    <li><a href="#erd">Entity Relationship Diagram (ERD)</a></li>
+    <li><a href="#chatbot-pipeline">Chatbot Processing Pipeline (Activity Diagram)</a></li>
+  </ol>
+</nav>
+
+
+<!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• UC1 â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
+<div class="uc" id="uc1">
+  <div class="uc-hdr">Use Case 1: ÄÄƒng KÃ½ TÃ i Khoáº£n (Sign Up)</div>
+  <div class="uc-body">
+    <div class="row">
+      <div class="box">
+        <div class="box-hdr">Biá»ƒu Äá»“ Tuáº§n Tá»± (Sequence Diagram)</div>
+        <div class="box-body" id="seq-uc1"><div class="puml-loading">â³ Äang táº£i biá»ƒu Ä‘á»“...</div></div>
+      </div>
+      <div class="box">
+        <div class="box-hdr">Biá»ƒu Äá»“ Lá»›p PhÃ¢n TÃ­ch (Analysis Class Diagram)</div>
+        <div class="box-body" id="cls-uc1"><div class="puml-loading">⏳ Đang tải biểu đồ...</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• UC2 â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
+<div class="uc" id="uc2">
+  <div class="uc-hdr">Use Case 2: TÃ¬m Kiáº¿m TrÆ°á»ng Äáº¡i Há»c (Search University)</div>
+  <div class="uc-body">
+    <div class="row">
+      <div class="box">
+        <div class="box-hdr">Biá»ƒu Äá»“ Tuáº§n Tá»± (Sequence Diagram)</div>
+        <div class="box-body" id="seq-uc2"><div class="puml-loading">â³ Äang táº£i biá»ƒu Ä‘á»“...</div></div>
+      </div>
+      <div class="box">
+        <div class="box-hdr">Biá»ƒu Äá»“ Lá»›p PhÃ¢n TÃ­ch (Analysis Class Diagram)</div>
+        <div class="box-body" id="cls-uc2"><div class="puml-loading">⏳ Đang tải biểu đồ...</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• UC3 â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
+<div class="uc" id="uc3">
+  <div class="uc-hdr">Use Case 3: Xem ThÃ´ng Tin Chi Tiáº¿t TrÆ°á»ng (View Detailed University Info)</div>
+  <div class="uc-body">
+    <div class="row">
+      <div class="box">
+        <div class="box-hdr">Biá»ƒu Äá»“ Tuáº§n Tá»± (Sequence Diagram)</div>
+        <div class="box-body" id="seq-uc3"><div class="puml-loading">â³ Äang táº£i biá»ƒu Ä‘á»“...</div></div>
+      </div>
+      <div class="box">
+        <div class="box-hdr">Biá»ƒu Äá»“ Lá»›p PhÃ¢n TÃ­ch (Analysis Class Diagram)</div>
+        <div class="box-body" id="cls-uc3"><div class="puml-loading">⏳ Đang tải biểu đồ...</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• UC4 â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
+<div class="uc" id="uc4">
+  <div class="uc-hdr">Use Case 4: Lá»c TrÆ°á»ng Äáº¡i Há»c (Filter Universities)</div>
+  <div class="uc-body">
+    <div class="row">
+      <div class="box">
+        <div class="box-hdr">Biá»ƒu Äá»“ Tuáº§n Tá»± (Sequence Diagram)</div>
+        <div class="box-body" id="seq-uc4"><div class="puml-loading">â³ Äang táº£i biá»ƒu Ä‘á»“...</div></div>
+      </div>
+      <div class="box">
+        <div class="box-hdr">Biá»ƒu Äá»“ Lá»›p PhÃ¢n TÃ­ch (Analysis Class Diagram)</div>
+        <div class="box-body" id="cls-uc4"><div class="puml-loading">⏳ Đang tải biểu đồ...</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• UC5 â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
+<div class="uc" id="uc5">
+  <div class="uc-hdr">Use Case 5: Xem Danh SÃ¡ch TrÆ°á»ng (View List of Universities)</div>
+  <div class="uc-body">
+    <div class="row">
+      <div class="box">
+        <div class="box-hdr">Biá»ƒu Äá»“ Tuáº§n Tá»± (Sequence Diagram)</div>
+        <div class="box-body" id="seq-uc5"><div class="puml-loading">â³ Äang táº£i biá»ƒu Ä‘á»“...</div></div>
+      </div>
+      <div class="box">
+        <div class="box-hdr">Biá»ƒu Äá»“ Lá»›p PhÃ¢n TÃ­ch (Analysis Class Diagram)</div>
+        <div class="box-body" id="cls-uc5"><div class="puml-loading">⏳ Đang tải biểu đồ...</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• UC6 â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
+<div class="uc" id="uc6">
+  <div class="uc-hdr">Use Case 6: So SÃ¡nh TrÆ°á»ng Äáº¡i Há»c (Compare Universities)</div>
+  <div class="uc-body">
+    <div class="row">
+      <div class="box">
+        <div class="box-hdr">Biá»ƒu Äá»“ Tuáº§n Tá»± (Sequence Diagram)</div>
+        <div class="box-body" id="seq-uc6"><div class="puml-loading">â³ Äang táº£i biá»ƒu Ä‘á»“...</div></div>
+      </div>
+      <div class="box">
+        <div class="box-hdr">Biá»ƒu Äá»“ Lá»›p PhÃ¢n TÃ­ch (Analysis Class Diagram)</div>
+        <div class="box-body" id="cls-uc6"><div class="puml-loading">⏳ Đang tải biểu đồ...</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• UC7 â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
+<div class="uc" id="uc7">
+  <div class="uc-hdr">Use Case 7: Quáº£n LÃ½ TÃ i Khoáº£n (Manage Account)</div>
+  <div class="uc-body">
+    <div class="row">
+      <div class="box">
+        <div class="box-hdr">Biá»ƒu Äá»“ Tuáº§n Tá»± (Sequence Diagram)</div>
+        <div class="box-body" id="seq-uc7"><div class="puml-loading">â³ Äang táº£i biá»ƒu Ä‘á»“...</div></div>
+      </div>
+      <div class="box">
+        <div class="box-hdr">Biá»ƒu Äá»“ Lá»›p PhÃ¢n TÃ­ch (Analysis Class Diagram)</div>
+        <div class="box-body" id="cls-uc7"><div class="puml-loading">⏳ Đang tải biểu đồ...</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• UC8 â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
+<div class="uc" id="uc8">
+  <div class="uc-hdr">Use Case 8: Quáº£n LÃ½ Há»c Váº¥n (Manage Academic Background)</div>
+  <div class="uc-body">
+    <div class="row">
+      <div class="box">
+        <div class="box-hdr">Biá»ƒu Äá»“ Tuáº§n Tá»± (Sequence Diagram)</div>
+        <div class="box-body" id="seq-uc8"><div class="puml-loading">â³ Äang táº£i biá»ƒu Ä‘á»“...</div></div>
+      </div>
+      <div class="box">
+        <div class="box-hdr">Biá»ƒu Äá»“ Lá»›p PhÃ¢n TÃ­ch (Analysis Class Diagram)</div>
+        <div class="box-body" id="cls-uc8"><div class="puml-loading">⏳ Đang tải biểu đồ...</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• UC9 â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
+<div class="uc" id="uc9">
+  <div class="uc-hdr">Use Case 9: Chat Vá»›i Chatbot (Chat to Chatbot)</div>
+  <div class="uc-body">
+    <div class="row">
+      <div class="box">
+        <div class="box-hdr">Biá»ƒu Äá»“ Tuáº§n Tá»± (Sequence Diagram)</div>
+        <div class="box-body" id="seq-uc9"><div class="puml-loading">â³ Äang táº£i biá»ƒu Ä‘á»“...</div></div>
+      </div>
+      <div class="box">
+        <div class="box-hdr">Biá»ƒu Äá»“ Lá»›p PhÃ¢n TÃ­ch (Analysis Class Diagram)</div>
+        <div class="box-body" id="cls-uc9"><div class="puml-loading">⏳ Đang tải biểu đồ...</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• UC10 â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
+<div class="uc" id="uc10">
+  <div class="uc-hdr">Use Case 10: ÄÄƒng Nháº­p (Log In)</div>
+  <div class="uc-body">
+    <div class="row">
+      <div class="box">
+        <div class="box-hdr">Biá»ƒu Äá»“ Tuáº§n Tá»± (Sequence Diagram)</div>
+        <div class="box-body" id="seq-uc10"><div class="puml-loading">â³ Äang táº£i biá»ƒu Ä‘á»“...</div></div>
+      </div>
+      <div class="box">
+        <div class="box-hdr">Biá»ƒu Äá»“ Lá»›p PhÃ¢n TÃ­ch (Analysis Class Diagram)</div>
+        <div class="box-body" id="cls-uc10"><div class="puml-loading">⏳ Đang tải biểu đồ...</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• UC11 â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
+<div class="uc" id="uc11">
+  <div class="uc-hdr">Use Case 11: Duy TrÃ¬ TÃ i Khoáº£n â€“ Admin (Maintain Account)</div>
+  <div class="uc-body">
+    <div class="row">
+      <div class="box">
+        <div class="box-hdr">Biá»ƒu Äá»“ Tuáº§n Tá»± (Sequence Diagram)</div>
+        <div class="box-body" id="seq-uc11"><div class="puml-loading">â³ Äang táº£i biá»ƒu Ä‘á»“...</div></div>
+      </div>
+      <div class="box">
+        <div class="box-hdr">Biá»ƒu Äá»“ Lá»›p PhÃ¢n TÃ­ch (Analysis Class Diagram)</div>
+        <div class="box-body" id="cls-uc11"><div class="puml-loading">⏳ Đang tải biểu đồ...</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• UC12 â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
+<div class="uc" id="uc12">
+  <div class="uc-hdr">Use Case 12: Duy TrÃ¬ TrÆ°á»ng Äáº¡i Há»c â€“ Admin (Maintain Universities)</div>
+  <div class="uc-body">
+    <div class="row">
+      <div class="box">
+        <div class="box-hdr">Biá»ƒu Äá»“ Tuáº§n Tá»± (Sequence Diagram)</div>
+        <div class="box-body" id="seq-uc12"><div class="puml-loading">â³ Äang táº£i biá»ƒu Ä‘á»“...</div></div>
+      </div>
+      <div class="box">
+        <div class="box-hdr">Biá»ƒu Äá»“ Lá»›p PhÃ¢n TÃ­ch (Analysis Class Diagram)</div>
+        <div class="box-body" id="cls-uc12"><div class="puml-loading">⏳ Đang tải biểu đồ...</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+<!-- ══════════════════════════════════════ UC13 ══════════════════════════════════════ -->
+<div class="uc" id="uc13">
+  <div class="uc-hdr">Use Case 13: View Scholarship List</div>
+  <div class="uc-body">
+    <div class="row">
+      <div class="box">
+        <div class="box-hdr">Sequence Diagram</div>
+        <div class="box-body" id="seq-uc13"><div class="puml-loading">&#x23F3; Loading diagram...</div></div>
+      </div>
+      <div class="box">
+        <div class="box-hdr">Analysis Class Diagram</div>
+        <div class="box-body" id="cls-uc13"><div class="puml-loading">&#x23F3; Loading diagram...</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+
+
+<script>
+// â”€â”€ PlantUML hex encoding (~h prefix â€” no compression library needed) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+const _PB64 = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-_';
+function _pb64_3(b1, b2, b3) {
+  return _PB64[b1>>2] + _PB64[((b1&3)<<4)|(b2>>4)] + _PB64[((b2&15)<<2)|(b3>>6)] + _PB64[b3&63];
+}
+function encodePUML(src) {
+  const compressed = pako.deflateRaw(new TextEncoder().encode(src));
+  let r = '';
+  for (let i = 0; i < compressed.length; i += 3)
+    r += _pb64_3(compressed[i], compressed[i+1]||0, compressed[i+2]||0);
+  return r;
+}
+
+// â”€â”€ PlantUML sources â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+const PUML_SRC = {
+  uc13: `@startuml
+skinparam backgroundColor white
+skinparam ActorBorderColor #A80036
+skinparam ActorBackgroundColor #FFFFC0
+skinparam BoundaryBorderColor #A80036
+skinparam BoundaryBackgroundColor #FFFFC0
+skinparam ControlBorderColor #A80036
+skinparam ControlBackgroundColor #FFFFC0
+skinparam EntityBorderColor #A80036
+skinparam EntityBackgroundColor #FFFFC0
+skinparam DatabaseBorderColor #A80036
+skinparam DatabaseBackgroundColor #FFFFC0
+skinparam SequenceArrowColor #A80036
+skinparam SequenceLifeLineBorderColor #A80036
+skinparam SequenceActivationBorderColor #A80036
+skinparam SequenceActivationBackgroundColor #EEEEEE
+skinparam ParticipantPadding 5
+skinparam SequenceMessageAlign left
+actor ":User" as U
+boundary ":ScholarshipsUI" as UI
+control ":ScholarshipsController" as C
+entity ":SCHOLARSHIP" as E1
+entity ":UNIVERSITY" as E2
+boundary ":DBInterface" as IC
+actor ":DatabaseSystem" as DB
+
+U -> UI: 1: navigate to Scholarships page
+activate UI
+UI -> C: 2: getScholarships(limit)
+activate C
+C -> E1: 3: getAllScholarships(limit)
+activate E1
+E1 -> IC: 4: getScholarships(limit)
+activate IC
+IC -> DB: 5: getScholarships(limit)
+activate DB
+deactivate DB
+deactivate IC
+deactivate E1
+C --> UI: 7: return scholarship list
+deactivate C
+UI --> U: 8: display scholarship cards (4 per row)
+deactivate UI
+U -> UI: 9: enter search keyword
+activate UI
+UI --> U: 10: filter and display matching scholarship cards
+deactivate UI
+@enduml`,
+  uc1: `@startuml
+skinparam backgroundColor white
+skinparam ActorBorderColor #A80036
+skinparam ActorBackgroundColor #FFFFC0
+skinparam BoundaryBorderColor #A80036
+skinparam BoundaryBackgroundColor #FFFFC0
+skinparam ControlBorderColor #A80036
+skinparam ControlBackgroundColor #FFFFC0
+skinparam EntityBorderColor #A80036
+skinparam EntityBackgroundColor #FFFFC0
+skinparam DatabaseBorderColor #A80036
+skinparam DatabaseBackgroundColor #FFFFC0
+skinparam SequenceArrowColor #A80036
+skinparam SequenceLifeLineBorderColor #A80036
+skinparam SequenceActivationBorderColor #A80036
+skinparam SequenceActivationBackgroundColor #EEEEEE
+skinparam ParticipantPadding 5
+skinparam SequenceMessageAlign left
+actor ":User" as U
+boundary ":RegisterUI" as UI
+control ":RegisterController" as C
+entity ":USER" as E
+entity ":STUDY_BG" as ESB
+boundary ":DBInterface" as IC
+actor ":DatabaseSystem" as DB
+actor ":EmailService" as EMAIL
+
+U -> UI: 1: click user icon on homepage
+activate UI
+UI --> U: 2: display register account screen
+deactivate UI
+U -> UI: 3: enter registration details (name, email, password)
+U -> UI: 4: click "Continue" button
+activate UI
+UI -> C: 5: signup(data)
+activate C
+C -> E: 6: checkEmailExists(email)
+activate E
+E -> IC: 7: getUserByEmail(email)
+activate IC
+IC -> DB: 8: getUserByEmail(email)
+activate DB
+deactivate DB
+deactivate IC
+deactivate E
+C -> E: 10: createPendingUser(data, otp, expiry)
+activate E
+E -> IC: 11: insertPendingUser()
+activate IC
+IC -> DB: 12: createPendingUser()
+activate DB
+deactivate DB
+deactivate IC
+deactivate E
+C -> EMAIL: 14: sendVerificationCodeEmail(email, otp)
+activate EMAIL
+EMAIL --> C: 15: return sent ok
+deactivate EMAIL
+C --> UI: 16: return "Verification code sent"
+deactivate C
+UI --> U: 17: display OTP input screen
+deactivate UI
+U -> UI: 18: enter OTP code
+U -> UI: 19: click "Verify" button
+activate UI
+UI -> C: 20: verifySignupCode(email, otp)
+activate C
+C -> E: 21: verifyAndActivate(email, otp)
+activate E
+E -> IC: 22: validateOTP(email, otp)
+activate IC
+IC -> DB: 23: getPendingUser(email, otp)
+activate DB
+deactivate DB
+deactivate IC
+E -> IC: 25: activateUser()
+activate IC
+IC -> DB: 26: activateUser()
+activate DB
+deactivate DB
+deactivate IC
+deactivate E
+C -> ESB: 28: createDefaultStudyBG(user_id)
+activate ESB
+ESB -> IC: 29: insertDefaultStudyBG(user_id)
+activate IC
+IC -> DB: 30: insertStudyBG(user_id)
+activate DB
+deactivate DB
+deactivate IC
+deactivate ESB
+C --> UI: 32: return "Account created successfully"
+deactivate C
+UI --> U: 33: display success - redirect to login
+deactivate UI
+@enduml`,
+    uc2: `@startuml
+skinparam backgroundColor white
+skinparam ActorBorderColor #A80036
+skinparam ActorBackgroundColor #FFFFC0
+skinparam BoundaryBorderColor #A80036
+skinparam BoundaryBackgroundColor #FFFFC0
+skinparam ControlBorderColor #A80036
+skinparam ControlBackgroundColor #FFFFC0
+skinparam EntityBorderColor #A80036
+skinparam EntityBackgroundColor #FFFFC0
+skinparam DatabaseBorderColor #A80036
+skinparam DatabaseBackgroundColor #FFFFC0
+skinparam SequenceArrowColor #A80036
+skinparam SequenceLifeLineBorderColor #A80036
+skinparam SequenceActivationBorderColor #A80036
+skinparam SequenceActivationBackgroundColor #EEEEEE
+skinparam ParticipantPadding 5
+skinparam SequenceMessageAlign left
+actor ":User" as U
+boundary ":SearchUI" as UI
+control ":SearchController" as C
+entity ":UNIVERSITY" as E
+boundary ":DBInterface" as IC
+actor ":DatabaseSystem" as DB
+
+U -> UI: 1: enter search keyword
+U -> UI: 2: click "Search" button
+activate UI
+UI -> C: 3: search(keyword)
+activate C
+C -> E: 4: searchUniversity(keyword)
+activate E
+E -> IC: 5: getUniversityList(keyword)
+activate IC
+IC -> DB: 6: searchUniversities(keyword)
+activate DB
+deactivate DB
+deactivate IC
+deactivate E
+C --> UI: 8: return search results
+deactivate C
+UI --> U: 9: display search result list
+deactivate UI
+@enduml`,
+    uc3: `@startuml
+skinparam backgroundColor white
+skinparam ActorBorderColor #A80036
+skinparam ActorBackgroundColor #FFFFC0
+skinparam BoundaryBorderColor #A80036
+skinparam BoundaryBackgroundColor #FFFFC0
+skinparam ControlBorderColor #A80036
+skinparam ControlBackgroundColor #FFFFC0
+skinparam EntityBorderColor #A80036
+skinparam EntityBackgroundColor #FFFFC0
+skinparam DatabaseBorderColor #A80036
+skinparam DatabaseBackgroundColor #FFFFC0
+skinparam SequenceArrowColor #A80036
+skinparam SequenceLifeLineBorderColor #A80036
+skinparam SequenceActivationBorderColor #A80036
+skinparam SequenceActivationBackgroundColor #EEEEEE
+skinparam ParticipantPadding 5
+skinparam SequenceMessageAlign left
+actor ":User" as U
+boundary ":UniversityDetailUI" as UI
+control ":UniversityDetailController" as C
+entity ":UNIVERSITY" as E1
+entity ":SCORES" as E2
+boundary ":DBInterface" as IC
+actor ":DatabaseSystem" as DB
+
+U -> UI: 1: select university to view details
+activate UI
+UI -> C: 2: getUniversityDetail(id)
+activate C
+C -> E1: 3: getUniversityByID(id)
+activate E1
+E1 -> IC: 4: getUniversityInfo(id)
+activate IC
+IC -> DB: 5: getUniversityByID(id)
+activate DB
+deactivate DB
+deactivate IC
+deactivate E1
+C -> E2: 7: getRankingScores(id)
+activate E2
+E2 -> IC: 8: getRankingScores(id)
+activate IC
+IC -> DB: 9: getScores(university_id)
+activate DB
+deactivate DB
+deactivate IC
+deactivate E2
+C --> UI: 11: return university + ranking scores
+deactivate C
+UI -> UI: 12: display university detail page
+deactivate UI
+@enduml`,
+    uc4: `@startuml
+skinparam backgroundColor white
+skinparam ActorBorderColor #A80036
+skinparam ActorBackgroundColor #FFFFC0
+skinparam BoundaryBorderColor #A80036
+skinparam BoundaryBackgroundColor #FFFFC0
+skinparam ControlBorderColor #A80036
+skinparam ControlBackgroundColor #FFFFC0
+skinparam EntityBorderColor #A80036
+skinparam EntityBackgroundColor #FFFFC0
+skinparam DatabaseBorderColor #A80036
+skinparam DatabaseBackgroundColor #FFFFC0
+skinparam SequenceArrowColor #A80036
+skinparam SequenceLifeLineBorderColor #A80036
+skinparam SequenceActivationBorderColor #A80036
+skinparam SequenceActivationBackgroundColor #EEEEEE
+skinparam ParticipantPadding 5
+skinparam SequenceMessageAlign left
+actor ":User" as U
+boundary ":FilterUI" as UI
+control ":FilterController" as C
+entity ":UNIVERSITY" as E1
+entity ":COUNTRY" as E2
+boundary ":DBInterface" as IC
+actor ":DatabaseSystem" as DB
+
+U -> UI: 1: click "Apply Filters" button
+activate UI
+UI -> C: 2: getRegions()
+activate C
+C -> E2: 3: getAllRegions()
+activate E2
+E2 -> IC: 4: getRegions()
+activate IC
+IC -> DB: 5: getRegions()
+activate DB
+deactivate DB
+deactivate IC
+deactivate E2
+C --> UI: 7: return region list
+deactivate C
+UI --> U: 8: display filter panel
+deactivate UI
+U -> UI: 9: set filter criteria (region, country, ranking...)
+U -> UI: 10: click "Apply Filter" button
+activate UI
+UI -> C: 11: filterUniversity(criteria)
+activate C
+C -> E1: 12: filterUniversities(criteria)
+activate E1
+E1 -> IC: 13: filterUniversities(criteria)
+activate IC
+IC -> DB: 14: filterUniversities(criteria)
+activate DB
+deactivate DB
+deactivate IC
+deactivate E1
+C --> UI: 16: return result
+deactivate C
+UI --> U: 17: display filtered university list
+deactivate UI
+@enduml`,
+    uc5: `@startuml
+skinparam backgroundColor white
+skinparam ActorBorderColor #A80036
+skinparam ActorBackgroundColor #FFFFC0
+skinparam BoundaryBorderColor #A80036
+skinparam BoundaryBackgroundColor #FFFFC0
+skinparam ControlBorderColor #A80036
+skinparam ControlBackgroundColor #FFFFC0
+skinparam EntityBorderColor #A80036
+skinparam EntityBackgroundColor #FFFFC0
+skinparam DatabaseBorderColor #A80036
+skinparam DatabaseBackgroundColor #FFFFC0
+skinparam SequenceArrowColor #A80036
+skinparam SequenceLifeLineBorderColor #A80036
+skinparam SequenceActivationBorderColor #A80036
+skinparam SequenceActivationBackgroundColor #EEEEEE
+skinparam ParticipantPadding 5
+skinparam SequenceMessageAlign left
+actor ":User" as U
+boundary ":UniversityListUI" as UI
+control ":UniversityListController" as C
+entity ":UNIVERSITY" as E
+boundary ":DBInterface" as IC
+actor ":DatabaseSystem" as DB
+
+U -> UI: 1: navigate to university ranking page
+activate UI
+UI -> C: 2: getUniversities(limit)
+activate C
+C -> E: 3: getAllUniversities(limit)
+activate E
+E -> IC: 4: getUniversities(limit)
+activate IC
+IC -> DB: 5: getUniversities(limit)
+activate DB
+deactivate DB
+deactivate IC
+deactivate E
+C --> UI: 7: return university list
+deactivate C
+UI --> U: 8: display university list
+deactivate UI
+U -> UI: 9: change page (pagination)
+activate UI
+UI --> U: 10: display next page
+deactivate UI
+U -> UI: 11: switch display mode (Quick / Table)
+activate UI
+UI --> U: 12: display in new mode
+deactivate UI
+@enduml`,
+    uc6: `@startuml
+skinparam backgroundColor white
+skinparam ActorBorderColor #A80036
+skinparam ActorBackgroundColor #FFFFC0
+skinparam BoundaryBorderColor #A80036
+skinparam BoundaryBackgroundColor #FFFFC0
+skinparam ControlBorderColor #A80036
+skinparam ControlBackgroundColor #FFFFC0
+skinparam EntityBorderColor #A80036
+skinparam EntityBackgroundColor #FFFFC0
+skinparam DatabaseBorderColor #A80036
+skinparam DatabaseBackgroundColor #FFFFC0
+skinparam SequenceArrowColor #A80036
+skinparam SequenceLifeLineBorderColor #A80036
+skinparam SequenceActivationBorderColor #A80036
+skinparam SequenceActivationBackgroundColor #EEEEEE
+skinparam ParticipantPadding 5
+skinparam SequenceMessageAlign left
+actor ":User" as U
+boundary ":CompareUI" as UI
+control ":CompareController" as C
+entity ":UNIVERSITY" as E1
+entity ":DETAIL_INFOR" as E2
+boundary ":DBInterface" as IC
+actor ":DatabaseSystem" as DB
+
+U -> UI: 1: select universities to compare
+U -> UI: 2: click "Compare" button
+activate UI
+UI -> C: 3: compareUniversities(ids)
+activate C
+C -> E1: 4: getMultipleUniversityInfo(ids)
+activate E1
+E1 -> IC: 5: getMultipleUniversities(ids)
+activate IC
+IC -> DB: 6: getMultipleUniversities(ids)
+activate DB
+deactivate DB
+deactivate IC
+deactivate E1
+C -> E2: 8: getAdditionalDetails(ids)
+activate E2
+E2 -> IC: 9: getMultipleDetails(ids)
+activate IC
+IC -> DB: 10: getMultipleDetails(ids)
+activate DB
+deactivate DB
+deactivate IC
+deactivate E2
+C --> UI: 12: return comparison data
+deactivate C
+UI --> U: 13: display side-by-side comparison table
+deactivate UI
+@enduml`,
+    uc7: `@startuml
+skinparam backgroundColor white
+skinparam ActorBorderColor #A80036
+skinparam ActorBackgroundColor #FFFFC0
+skinparam BoundaryBorderColor #A80036
+skinparam BoundaryBackgroundColor #FFFFC0
+skinparam ControlBorderColor #A80036
+skinparam ControlBackgroundColor #FFFFC0
+skinparam EntityBorderColor #A80036
+skinparam EntityBackgroundColor #FFFFC0
+skinparam DatabaseBorderColor #A80036
+skinparam DatabaseBackgroundColor #FFFFC0
+skinparam SequenceArrowColor #A80036
+skinparam SequenceLifeLineBorderColor #A80036
+skinparam SequenceActivationBorderColor #A80036
+skinparam SequenceActivationBackgroundColor #EEEEEE
+skinparam ParticipantPadding 5
+skinparam SequenceMessageAlign left
+actor ":User" as U
+boundary ":AccountMgmtUI" as UI
+control ":AccountMgmtController" as C
+entity ":USER" as E
+boundary ":DBInterface" as IC
+actor ":DatabaseSystem" as DB
+
+U -> UI: 1: navigate to personal profile page
+activate UI
+UI -> C: 2: getAccountInfo(userID)
+activate C
+C -> E: 3: getUSERByID(userID)
+activate E
+E -> IC: 4: getUSER(userID)
+activate IC
+IC -> DB: 5: getUSER(userID)
+activate DB
+deactivate DB
+deactivate IC
+deactivate E
+C --> UI: 7: return account information
+deactivate C
+UI --> U: 8: display current account information
+deactivate UI
+U -> UI: 9: edit profile (name, phone, address...)
+U -> UI: 10: click "Save" button
+activate UI
+UI -> C: 11: updateAccount(data)
+activate C
+C -> E: 12: validateData(data)
+activate E
+deactivate E
+C -> E: 14: updateUser(data)
+activate E
+E -> IC: 15: updateUSER(data)
+activate IC
+IC -> DB: 16: updateUSER(data)
+activate DB
+deactivate DB
+deactivate IC
+deactivate E
+C --> UI: 18: return update result
+deactivate C
+UI --> U: 19: display update success notification
+deactivate UI
+@enduml`,
+    uc8: `@startuml
+skinparam backgroundColor white
+skinparam ActorBorderColor #A80036
+skinparam ActorBackgroundColor #FFFFC0
+skinparam BoundaryBorderColor #A80036
+skinparam BoundaryBackgroundColor #FFFFC0
+skinparam ControlBorderColor #A80036
+skinparam ControlBackgroundColor #FFFFC0
+skinparam EntityBorderColor #A80036
+skinparam EntityBackgroundColor #FFFFC0
+skinparam DatabaseBorderColor #A80036
+skinparam DatabaseBackgroundColor #FFFFC0
+skinparam SequenceArrowColor #A80036
+skinparam SequenceLifeLineBorderColor #A80036
+skinparam SequenceActivationBorderColor #A80036
+skinparam SequenceActivationBackgroundColor #EEEEEE
+skinparam ParticipantPadding 5
+skinparam SequenceMessageAlign left
+actor ":User" as U
+boundary ":AcademicBgUI" as UI
+control ":AcademicBgController" as C
+entity ":STUDY_BG" as E
+boundary ":DBInterface" as IC
+actor ":DatabaseSystem" as DB
+
+U -> UI: 1: navigate to academic background page
+activate UI
+UI -> C: 2: getAcademicBackground(userID)
+activate C
+C -> E: 3: getStudyBGByUserID(userID)
+activate E
+E -> IC: 4: getSTUDY_BG(userID)
+activate IC
+IC -> DB: 5: getSTUDY_BG(userID)
+activate DB
+deactivate DB
+deactivate IC
+deactivate E
+C --> UI: 7: return academic background data
+deactivate C
+UI --> U: 8: display current academic background
+deactivate UI
+U -> UI: 9: update info (degree, major, GPA, IELTS...)
+U -> UI: 10: click "Save" button
+activate UI
+UI -> C: 11: updateAcademicBackground(data)
+activate C
+C -> E: 12: updateStudyBG(data)
+activate E
+E -> IC: 13: updateSTUDY_BG(data)
+activate IC
+IC -> DB: 14: updateSTUDY_BG(data)
+activate DB
+deactivate DB
+deactivate IC
+deactivate E
+C --> UI: 16: return result
+deactivate C
+UI --> U: 17: display update success notification
+deactivate UI
+@enduml`,
+    uc9: `@startuml
+skinparam backgroundColor white
+skinparam ActorBorderColor #A80036
+skinparam ActorBackgroundColor #FFFFC0
+skinparam BoundaryBorderColor #A80036
+skinparam BoundaryBackgroundColor #FFFFC0
+skinparam ControlBorderColor #A80036
+skinparam ControlBackgroundColor #FFFFC0
+skinparam EntityBorderColor #A80036
+skinparam EntityBackgroundColor #FFFFC0
+skinparam DatabaseBorderColor #A80036
+skinparam DatabaseBackgroundColor #FFFFC0
+skinparam SequenceArrowColor #A80036
+skinparam SequenceLifeLineBorderColor #A80036
+skinparam SequenceActivationBorderColor #A80036
+skinparam SequenceActivationBackgroundColor #EEEEEE
+skinparam ParticipantPadding 5
+skinparam SequenceMessageAlign left
+actor ":User" as U
+boundary ":ChatbotUI" as UI
+control ":ChatbotController" as C
+entity ":CHAT_SESSION" as E1
+entity ":CHAT_MESSAGE" as E2
+entity ":STUDY_BG" as E3
+entity ":CHAT_SUMMARY" as E4
+control ":ChatbotEngine" as CE
+actor ":GeminiAPI" as AI
+boundary ":DBInterface" as IC
+actor ":DatabaseSystem" as DB
+
+U -> UI: 1: navigate to chatbot page
+activate UI
+UI -> C: 2: loadSessions(userID)
+activate C
+C -> E1: 3: getSessionsByUser(userID)
+activate E1
+E1 -> IC: 4: getSessions(user_id)
+activate IC
+IC -> DB: 5: getSessions(user_id)
+activate DB
+deactivate DB
+deactivate IC
+deactivate E1
+C --> UI: 7: return session list
+deactivate C
+UI --> U: 8: display chat interface with session list
+deactivate UI
+U -> UI: 9: type message
+U -> UI: 10: click "Send" button
+activate UI
+UI -> C: 11: sendMessage(sessionID, message)
+activate C
+C -> E1: 12: getOrCreateSession(sessionID, userID, title)
+activate E1
+E1 -> IC: 13: getOrCreateSession()
+activate IC
+IC -> DB: 14: getOrCreateSession()
+activate DB
+deactivate DB
+deactivate IC
+deactivate E1
+C -> E2: 16: loadRecentHistory(session_id, limit=10)
+activate E2
+E2 -> IC: 17: getRecentMessages(session_id)
+activate IC
+IC -> DB: 18: getRecentMessages(session_id)
+activate DB
+deactivate DB
+deactivate IC
+deactivate E2
+C -> E4: 20: loadSummary(session_id)
+activate E4
+E4 -> IC: 21: getSummary(session_id)
+activate IC
+IC -> DB: 22: getSummary(session_id)
+activate DB
+deactivate DB
+deactivate IC
+deactivate E4
+C -> E3: 24: loadUserProfile(userID)
+activate E3
+E3 -> IC: 25: getStudyBG(user_id)
+activate IC
+IC -> DB: 26: getStudyBG(user_id)
+activate DB
+deactivate DB
+deactivate IC
+deactivate E3
+C -> CE: 28: process(message, history, user_profile, history_summary)
+activate CE
+CE -> AI: 29: generate response (Gemini API call)
+activate AI
+AI --> CE: 30: return AI response text
+deactivate AI
+CE --> C: 30: return bot_reply
+deactivate CE
+C -> E2: 31: saveMessages(session_id, user_msg, bot_reply)
+activate E2
+E2 -> IC: 32: saveMessages(session_id)
+activate IC
+IC -> DB: 33: saveMessages(session_id)
+activate DB
+deactivate DB
+deactivate IC
+deactivate E2
+C --> UI: 35: return bot_reply + session_id
+deactivate C
+UI --> U: 36: display chatbot response
+deactivate UI
+activate C
+C -> E4: 37: maybeUpdateSummary(session_id)
+activate E4
+E4 -> IC: 38: countMessages(session_id)
+activate IC
+IC -> DB: 39: countMessages(session_id)
+activate DB
+deactivate DB
+deactivate IC
+E4 -> CE: 41: summarizeHistory(older_messages)
+activate CE
+CE -> AI: 42: generate summary (Gemini API call)
+activate AI
+AI --> CE: 43: return summary text
+deactivate AI
+CE --> E4: 43: return summary_text
+deactivate CE
+E4 -> IC: 44: upsertSummary(session_id)
+activate IC
+IC -> DB: 45: upsertSummary(session_id)
+activate DB
+deactivate DB
+deactivate IC
+deactivate E4
+deactivate C
+@enduml`,
+    uc10: `@startuml
+skinparam backgroundColor white
+skinparam ActorBorderColor #A80036
+skinparam ActorBackgroundColor #FFFFC0
+skinparam BoundaryBorderColor #A80036
+skinparam BoundaryBackgroundColor #FFFFC0
+skinparam ControlBorderColor #A80036
+skinparam ControlBackgroundColor #FFFFC0
+skinparam EntityBorderColor #A80036
+skinparam EntityBackgroundColor #FFFFC0
+skinparam DatabaseBorderColor #A80036
+skinparam DatabaseBackgroundColor #FFFFC0
+skinparam SequenceArrowColor #A80036
+skinparam SequenceLifeLineBorderColor #A80036
+skinparam SequenceActivationBorderColor #A80036
+skinparam SequenceActivationBackgroundColor #EEEEEE
+skinparam ParticipantPadding 5
+skinparam SequenceMessageAlign left
+actor ":User / Admin" as U
+boundary ":LoginUI" as UI
+control ":LoginController" as C
+entity ":USER" as E1
+entity ":REFRESH_TOKEN" as E2
+boundary ":DBInterface" as IC
+actor ":DatabaseSystem" as DB
+
+U -> UI: 1: navigate to login page
+activate UI
+UI --> U: 2: display login screen
+deactivate UI
+U -> UI: 3: enter email and password
+U -> UI: 4: click "Login" button
+activate UI
+UI -> C: 5: login(email, password)
+activate C
+C -> E1: 6: getUSERByEmail(email)
+activate E1
+E1 -> IC: 7: getUserByEmail(email)
+activate IC
+IC -> DB: 8: getUserByEmail(email)
+activate DB
+deactivate DB
+deactivate IC
+deactivate E1
+C -> C: 10: verifyPassword(password, hash)
+C -> E2: 11: createRefreshToken(userID)
+activate E2
+E2 -> IC: 12: saveRefreshToken(data)
+activate IC
+IC -> DB: 13: saveRefreshToken(data)
+activate DB
+deactivate DB
+deactivate IC
+deactivate E2
+C --> UI: 15: return access token and redirect
+deactivate C
+UI --> U: 16: save token, redirect to home or admin page
+deactivate UI
+@enduml`,
+    uc11: `@startuml
+skinparam backgroundColor white
+skinparam ActorBorderColor #A80036
+skinparam ActorBackgroundColor #FFFFC0
+skinparam BoundaryBorderColor #A80036
+skinparam BoundaryBackgroundColor #FFFFC0
+skinparam ControlBorderColor #A80036
+skinparam ControlBackgroundColor #FFFFC0
+skinparam EntityBorderColor #A80036
+skinparam EntityBackgroundColor #FFFFC0
+skinparam DatabaseBorderColor #A80036
+skinparam DatabaseBackgroundColor #FFFFC0
+skinparam SequenceArrowColor #A80036
+skinparam SequenceLifeLineBorderColor #A80036
+skinparam SequenceActivationBorderColor #A80036
+skinparam SequenceActivationBackgroundColor #EEEEEE
+skinparam ParticipantPadding 5
+skinparam SequenceMessageAlign left
+actor ":Admin" as A
+boundary ":AdminAccountUI" as UI
+control ":AdminAccountController" as C
+entity ":USER" as E
+boundary ":DBInterface" as IC
+actor ":DatabaseSystem" as DB
+
+A -> UI: 1: navigate to account management page
+activate UI
+UI -> C: 2: getUserList()
+activate C
+C -> E: 3: getAllUsers()
+activate E
+E -> IC: 4: getUSER()
+activate IC
+IC -> DB: 5: getUSER()
+activate DB
+deactivate DB
+deactivate IC
+deactivate E
+C --> UI: 7: return user list
+deactivate C
+UI --> A: 8: display user list
+deactivate UI
+A -> UI: 9: click "Add" button
+activate UI
+UI --> A: 10: display add user form
+deactivate UI
+A -> UI: 11: enter details and confirm
+activate UI
+UI -> C: 12: addUser(data)
+activate C
+C -> E: 13: createUser(data)
+activate E
+E -> IC: 14: insertUSER(data)
+activate IC
+IC -> DB: 15: insertUSER(data)
+activate DB
+deactivate DB
+deactivate IC
+deactivate E
+C --> UI: 17: return add success result
+deactivate C
+UI --> A: 18: display updated list
+deactivate UI
+A -> UI: 19: click "Edit" on row
+activate UI
+UI -> C: 20: getUserInfo(userID)
+activate C
+C -> E: 21: getUSERByID(userID)
+activate E
+E -> IC: 22: getUserByID(userID)
+activate IC
+IC -> DB: 23: getUserByID(userID)
+activate DB
+deactivate DB
+deactivate IC
+deactivate E
+C --> UI: 25: return user information
+deactivate C
+UI --> A: 26: display edit form
+deactivate UI
+A -> UI: 27: edit and confirm
+activate UI
+UI -> C: 28: updateUser(data)
+activate C
+C -> E: 29: updateUser(data)
+activate E
+E -> IC: 30: updateUSER(data)
+activate IC
+IC -> DB: 31: updateUSER(data)
+activate DB
+deactivate DB
+deactivate IC
+deactivate E
+C --> UI: 33: return update result thanh cong
+deactivate C
+UI --> A: 34: display updated list
+deactivate UI
+A -> UI: 35: click "Delete" on row
+activate UI
+UI --> A: 36: display delete confirmation
+deactivate UI
+A -> UI: 37: confirm deletion
+activate UI
+UI -> C: 38: deleteUser(userID)
+activate C
+C -> E: 39: deleteUSER(userID)
+activate E
+E -> IC: 40: deleteUSER(userID)
+activate IC
+IC -> DB: 41: deleteUSER(userID)
+activate DB
+deactivate DB
+deactivate IC
+deactivate E
+C --> UI: 43: return delete success result
+deactivate C
+UI --> A: 44: display updated list
+deactivate UI
+@enduml`,
+    uc12: `@startuml
+skinparam backgroundColor white
+skinparam ActorBorderColor #A80036
+skinparam ActorBackgroundColor #FFFFC0
+skinparam BoundaryBorderColor #A80036
+skinparam BoundaryBackgroundColor #FFFFC0
+skinparam ControlBorderColor #A80036
+skinparam ControlBackgroundColor #FFFFC0
+skinparam EntityBorderColor #A80036
+skinparam EntityBackgroundColor #FFFFC0
+skinparam DatabaseBorderColor #A80036
+skinparam DatabaseBackgroundColor #FFFFC0
+skinparam SequenceArrowColor #A80036
+skinparam SequenceLifeLineBorderColor #A80036
+skinparam SequenceActivationBorderColor #A80036
+skinparam SequenceActivationBackgroundColor #EEEEEE
+skinparam ParticipantPadding 5
+skinparam SequenceMessageAlign left
+actor ":Admin" as A
+boundary ":AdminUniversityUI" as UI
+control ":AdminUniversityController" as C
+entity ":UNIVERSITY" as E1
+entity ":DETAIL_INFOR" as E2
+boundary ":DBInterface" as IC
+actor ":DatabaseSystem" as DB
+
+A -> UI: 1: navigate to university management page
+activate UI
+UI -> C: 2: getUniversityList()
+activate C
+C -> E1: 3: getAllUniversities()
+activate E1
+E1 -> IC: 4: getUNIVERSITY()
+activate IC
+IC -> DB: 5: getUNIVERSITY()
+activate DB
+deactivate DB
+deactivate IC
+deactivate E1
+C --> UI: 7: return university list
+deactivate C
+UI --> A: 8: display university list
+deactivate UI
+A -> UI: 9: click "Add University" button
+activate UI
+UI --> A: 10: display add university form
+deactivate UI
+A -> UI: 11: enter university details and confirm
+activate UI
+UI -> C: 12: insertUniversity(data)
+activate C
+C -> E1: 13: createUniversity(data)
+activate E1
+E1 -> IC: 14: insertUniversity(data)
+activate IC
+IC -> DB: 15: insertUNIVERSITY(data)
+activate DB
+deactivate DB
+deactivate IC
+deactivate E1
+C --> UI: 17: return add success result
+deactivate C
+UI --> A: 18: display updated list
+deactivate UI
+A -> UI: 19: click "Edit" on row truong
+activate UI
+UI -> C: 20: getUniversityDetail(id)
+activate C
+C -> E1: 21: getUniversityByID(id)
+activate E1
+E1 -> IC: 22: getUniversityInfo(id)
+activate IC
+IC -> DB: 23: getUniversityByID(id)
+activate DB
+deactivate DB
+deactivate IC
+deactivate E1
+C --> UI: 25: return university information
+deactivate C
+UI --> A: 26: display edit form
+deactivate UI
+A -> UI: 27: edit details and confirm
+activate UI
+UI -> C: 28: updateUniversity(id, data)
+activate C
+C -> E1: 29: updateUniversity(id, data)
+activate E1
+E1 -> IC: 30: updateUNIVERSITY(id, data)
+activate IC
+IC -> DB: 31: updateUNIVERSITY(id, data)
+activate DB
+deactivate DB
+deactivate IC
+deactivate E1
+C --> UI: 33: return update result thanh cong
+deactivate C
+UI --> A: 34: display updated list
+deactivate UI
+A -> UI: 35: click "Delete" on row truong
+activate UI
+UI --> A: 36: display delete confirmation
+deactivate UI
+A -> UI: 37: confirm deletion
+activate UI
+UI -> C: 38: deleteUniversity(id)
+activate C
+C -> E1: 39: deleteUniversity(id)
+activate E1
+E1 -> IC: 40: deleteUniversity(id)
+activate IC
+IC -> DB: 41: deleteUNIVERSITY(id)
+activate DB
+deactivate DB
+deactivate IC
+deactivate E1
+C --> UI: 43: return delete success result
+deactivate C
+UI --> A: 44: display updated university list
+deactivate UI
+@enduml`
+};
+
+// â”€â”€ Render all diagrams â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+function renderPUML() {
+  for (const [key, src] of Object.entries(PUML_SRC)) {
+    const el = document.getElementById('seq-' + key);
+    if (!el) continue;
+    const encoded = encodePUML(src);
+    const url = 'https://www.plantuml.com/plantuml/svg/' + encoded;
+    el.innerHTML = '<img class="puml-img" src="' + url + '" alt="Sequence Diagram">';
+  }
+  for (const [key, src] of Object.entries(CLS_SRC)) {
+    const el = document.getElementById('cls-' + key);
+    if (!el) continue;
+    const encoded = encodePUML(src);
+    const url = 'https://www.plantuml.com/plantuml/svg/' + encoded;
+    el.innerHTML = '<img class="puml-img" src="' + url + '" alt="Class Diagram">';
+  }
+}
+const CLS_SRC = {
+  uc13: `@startuml
+hide circle
+allowmixing
+left to right direction
+skinparam backgroundColor white
+skinparam classBackgroundColor #FFFFC0
+skinparam classBorderColor #A80036
+skinparam classHeaderBackgroundColor #FFE0A0
+skinparam ArrowColor #A80036
+skinparam classPrivateBackgroundColor #1BA1E2
+skinparam classProtectedBackgroundColor #9400D3
+class "ScholarshipsUI" <<boundary>> {
+  #showScholarshipList()
+  #displayScholarshipCard()
+  #searchScholarship()
+  #showLoading()
+  #showError()
+}
+class "ScholarshipsController" <<control>> {
+  -getScholarships(limit)
+  -searchScholarships(keyword)
+}
+class "SCHOLARSHIP" <<entity>> {
+  -id
+  -universityID
+  -name
+  -value
+  -duration
+  -criteria
+  -getAllScholarships(limit)
+  -getScholarshipByID(id)
+  -searchByKeyword(keyword)
+}
+class "UNIVERSITY" <<entity>> {
+  -id
+  -name
+  -logo
+  -city
+  -countryID
+  -getUniversityByID(id)
+}
+class "DBInterface" <<boundary>> {
+  -getScholarships(limit)
+  -searchScholarships(keyword)
+  -getUniversityInfo(id)
+}
+actor "User" as U
+actor "DatabaseSystem" as DB
+U "1" --> "1" ScholarshipsUI
+ScholarshipsUI "1" --> "1" ScholarshipsController
+ScholarshipsController "1" --> "1" SCHOLARSHIP
+SCHOLARSHIP "1" --> "1" UNIVERSITY
+SCHOLARSHIP "1" --> "1" DBInterface
+UNIVERSITY "1" --> "1" DBInterface
+DBInterface "1" --> "1" DB
+skinparam ActorBackgroundColor white
+skinparam ActorBorderColor #A80036
+@enduml`,
+  uc1: `@startuml
+hide circle
+allowmixing
+left to right direction
+skinparam backgroundColor white
+skinparam classBackgroundColor #FFFFC0
+skinparam classBorderColor #A80036
+skinparam classHeaderBackgroundColor #FFE0A0
+skinparam ArrowColor #A80036
+skinparam classPrivateBackgroundColor #1BA1E2
+skinparam classProtectedBackgroundColor #9400D3
+class "RegisterUI" <<boundary>> {
+  #showRegisterScreen()
+  #inputRegistrationInfo()
+  #showOTPScreen()
+  #showSuccessNotification()
+  #showErrorMessage()
+}
+class "RegisterController" <<control>> {
+  -signup(data)
+  -verifySignupCode(email, otp)
+}
+class "USER" <<entity>> {
+  -userID
+  -firstName
+  -lastName
+  -email
+  -password
+  -isActive
+  -emailVerified
+  -roleType
+  #checkEmailExists(email)
+  #createPendingUser(data, otp, expiry)
+  #verifyAndActivate(email, otp)
+  #getUserByID(id)
+  #updateUser(data)
+  #deleteUser(id)
+}
+class "STUDY_BG" <<entity>> {
+  -id
+  -userID
+  -degreeType
+  -major
+  -gpa
+  -ielts
+  -toefl
+  #createDefaultStudyBG(userID)
+}
+class "DBInterface" <<boundary>> {
+  #getUserByEmail(email)
+  #createPendingUser()
+  #getPendingUser(email, otp)
+  #activateUser()
+  #insertStudyBG(userID)
+}
+actor "User" as U
+actor "DatabaseSystem" as DB
+actor "EmailService" as EMAIL
+U "1" --> "1" RegisterUI
+RegisterUI "1" --> "1" RegisterController
+RegisterController "1" --> "1" USER
+RegisterController "1" --> "1" STUDY_BG
+RegisterController "1" --> "1" EMAIL
+USER "1" --> "1" DBInterface
+STUDY_BG "1" --> "1" DBInterface
+DBInterface "1" --> "1" DB
+skinparam ActorBackgroundColor white
+skinparam ActorBorderColor #A80036
+@enduml`,
+  uc2: `@startuml
+hide circle
+allowmixing
+left to right direction
+skinparam backgroundColor white
+skinparam classBackgroundColor #FFFFC0
+skinparam classBorderColor #A80036
+skinparam classHeaderBackgroundColor #FFE0A0
+skinparam ArrowColor #A80036
+skinparam classPrivateBackgroundColor #1BA1E2
+skinparam classProtectedBackgroundColor #9400D3
+class "SearchUI" <<boundary>> {
+  #inputKeyword()
+  #onSearchClick()
+  #showSearchResults()
+}
+class "SearchController" <<control>> {
+  -searchUniversity(keyword)
+}
+class "UNIVERSITY" <<entity>> {
+  -id
+  -name
+  -region
+  -countryID
+  -city
+  -logo
+  -overallScore
+  -rankInt
+  -searchByName(name)
+  -getUniversityByID(id)
+}
+class "DBInterface" <<boundary>> {
+  #getUniversityList()
+  -searchUniversity(keyword)
+}
+actor "User" as U
+actor "DatabaseSystem" as DB
+U "1" --> "1" SearchUI
+SearchUI "1" --> "1" SearchController
+SearchController "1" --> "1" UNIVERSITY
+UNIVERSITY "1" --> "1" DBInterface
+DBInterface "1" --> "1" DB
+skinparam ActorBackgroundColor white
+skinparam ActorBorderColor #A80036
+@enduml`,
+  uc3: `@startuml
+hide circle
+allowmixing
+left to right direction
+skinparam backgroundColor white
+skinparam classBackgroundColor #FFFFC0
+skinparam classBorderColor #A80036
+skinparam classHeaderBackgroundColor #FFE0A0
+skinparam ArrowColor #A80036
+skinparam classPrivateBackgroundColor #1BA1E2
+skinparam classProtectedBackgroundColor #9400D3
+class "UniversityDetailUI" <<boundary>> {
+  #showUniversityDetail()
+  #showRankingScores()
+}
+class "UniversityDetailController" <<control>> {
+  #getUniversityDetail(id)
+  #getRankingScores(id)
+}
+class "UNIVERSITY" <<entity>> {
+  -id
+  -name
+  -region
+  -countryID
+  -city
+  -logo
+  -overallScore
+  -rankInt
+  #getUniversityByID(id)
+}
+class "SCORES" <<entity>> {
+  -id
+  -universityID
+  -indicatorID
+  -score
+  -rank
+  #getRankingScores(uniID)
+}
+class "DBInterface" <<boundary>> {
+  #getUniversityInfo(id)
+  #getRankingScores(id)
+}
+actor "User" as U
+actor "DatabaseSystem" as DB
+U "1" --> "1" UniversityDetailUI
+UniversityDetailUI "1" --> "1" UniversityDetailController
+UniversityDetailController "1" --> "1" UNIVERSITY
+UniversityDetailController "1" --> "1" SCORES
+UNIVERSITY "1" --> "1" DBInterface
+SCORES "1" --> "1" DBInterface
+DBInterface "1" --> "1" DB
+skinparam ActorBackgroundColor white
+skinparam ActorBorderColor #A80036
+@enduml`,
+  uc4: `@startuml
+hide circle
+allowmixing
+left to right direction
+skinparam backgroundColor white
+skinparam classBackgroundColor #FFFFC0
+skinparam classBorderColor #A80036
+skinparam classHeaderBackgroundColor #FFE0A0
+skinparam ArrowColor #A80036
+skinparam classPrivateBackgroundColor #1BA1E2
+skinparam classProtectedBackgroundColor #9400D3
+class "FilterUI" <<boundary>> {
+  #showFilterPanel()
+  #setFilterCriteria()
+  #onApplyFilterClick()
+  #showFilteredUniversities()
+  #clearFilters()
+}
+class "FilterController" <<control>> {
+  -filterUniversity(criteria)
+  #getRegions()
+  -getCountriesByRegion(region)
+}
+class "UNIVERSITY" <<entity>> {
+  -id
+  -name
+  -region
+  -countryID
+  -city
+  -overallScore
+  -rankInt
+  -filterUniversities(criteria)
+  #getAllRegions()
+  -getUniversitiesByRegion(region)
+}
+class "COUNTRY" <<entity>> {
+  -id
+  -name
+  -region
+  #getAllCountries()
+  -getCountriesByRegion(region)
+}
+class "DBInterface" <<boundary>> {
+  -filterUniversities(criteria)
+  #getRegions()
+  -getCountriesByRegion(region)
+}
+actor "User" as U
+actor "DatabaseSystem" as DB
+U "1" --> "1" FilterUI
+FilterUI "1" --> "1" FilterController
+FilterController "1" --> "1" UNIVERSITY
+FilterController "1" --> "1" COUNTRY
+UNIVERSITY "1" --> "1" DBInterface
+COUNTRY "1" --> "1" DBInterface
+DBInterface "1" --> "1" DB
+skinparam ActorBackgroundColor white
+skinparam ActorBorderColor #A80036
+@enduml`,
+  uc5: `@startuml
+hide circle
+allowmixing
+left to right direction
+skinparam backgroundColor white
+skinparam classBackgroundColor #FFFFC0
+skinparam classBorderColor #A80036
+skinparam classHeaderBackgroundColor #FFE0A0
+skinparam ArrowColor #A80036
+skinparam classPrivateBackgroundColor #1BA1E2
+skinparam classProtectedBackgroundColor #9400D3
+class "UniversityListUI" <<boundary>> {
+  #showUniversityList()
+  #switchDisplayMode()
+  #changePage()
+  #sortByCriteria()
+  #exportToExcel()
+}
+class "UniversityListController" <<control>> {
+  -getUniversities(limit)
+  -sortUniversities(criteria)
+  -getNextPage(page)
+}
+class "UNIVERSITY" <<entity>> {
+  -id
+  -name
+  -region
+  -countryID
+  -city
+  -logo
+  -overallScore
+  -rankInt
+  -getAllUniversities(limit)
+  -getUniversityByID(id)
+  #sortByRank()
+  #sortByScore()
+}
+class "DBInterface" <<boundary>> {
+  -getUniversities(limit)
+  #getTotalUniversities()
+}
+actor "User" as U
+actor "DatabaseSystem" as DB
+U "1" --> "1" UniversityListUI
+UniversityListUI "1" --> "1" UniversityListController
+UniversityListController "1" --> "1" UNIVERSITY
+UNIVERSITY "1" --> "1" DBInterface
+DBInterface "1" --> "1" DB
+skinparam ActorBackgroundColor white
+skinparam ActorBorderColor #A80036
+@enduml`,
+  uc6: `@startuml
+hide circle
+allowmixing
+left to right direction
+skinparam backgroundColor white
+skinparam classBackgroundColor #FFFFC0
+skinparam classBorderColor #A80036
+skinparam classHeaderBackgroundColor #FFE0A0
+skinparam ArrowColor #A80036
+skinparam classPrivateBackgroundColor #1BA1E2
+skinparam classProtectedBackgroundColor #9400D3
+class "CompareUI" <<boundary>> {
+  #selectUniversitiesToCompare()
+  #onCompareClick()
+  #showComparisonTable()
+  #removeFromComparison()
+}
+class "CompareController" <<control>> {
+  -compareUniversities(ids)
+  -getComparisonData(ids)
+}
+class "UNIVERSITY" <<entity>> {
+  -id
+  -name
+  -region
+  -countryID
+  -city
+  -logo
+  -overallScore
+  -rankInt
+  -getUniversityByID(id)
+  -getComparisonData(ids)
+}
+class "DETAIL_INFOR" <<entity>> {
+  -id
+  -universityID
+  -fee
+  -scholarship
+  -domestic
+  -international
+  -totalStu
+  -ugRate
+  -pgRate
+  -getDetailInfor(uniID)
+  -getDetailInforMultiple(ids)
+}
+class "DBInterface" <<boundary>> {
+  -getMultipleUniversities(ids)
+  -getMultipleDetails(ids)
+}
+actor "User" as U
+actor "DatabaseSystem" as DB
+U "1" --> "1" CompareUI
+CompareUI "1" --> "1" CompareController
+CompareController "1" --> "1" UNIVERSITY
+CompareController "1" --> "1" DETAIL_INFOR
+UNIVERSITY "1" --> "1" DBInterface
+DETAIL_INFOR "1" --> "1" DBInterface
+DBInterface "1" --> "1" DB
+skinparam ActorBackgroundColor white
+skinparam ActorBorderColor #A80036
+@enduml`,
+  uc7: `@startuml
+hide circle
+allowmixing
+left to right direction
+skinparam backgroundColor white
+skinparam classBackgroundColor #FFFFC0
+skinparam classBorderColor #A80036
+skinparam classHeaderBackgroundColor #FFE0A0
+skinparam ArrowColor #A80036
+skinparam classPrivateBackgroundColor #1BA1E2
+skinparam classProtectedBackgroundColor #9400D3
+class "AccountMgmtUI" <<boundary>> {
+  #showAccountInfo()
+  #editProfileInfo()
+  #onSaveClick()
+  #showUpdateNotification()
+  #changePassword()
+}
+class "AccountMgmtController" <<control>> {
+  -getAccountInfo(userID)
+  -updateAccount(data)
+  -changePassword(oldPwd, newPwd)
+}
+class "USER" <<entity>> {
+  -userID
+  -fullName
+  -passWord
+  -email
+  -status
+  -address
+  -phoneNumber
+  -gender
+  -roleID
+  -getUserByID(id)
+  -updateUser(data)
+  -deleteUser(id)
+}
+class "DBInterface" <<boundary>> {
+  -getUSER(userID)
+  -updateUSER(data)
+}
+actor "User" as U
+actor "DatabaseSystem" as DB
+U "1" --> "1" AccountMgmtUI
+AccountMgmtUI "1" --> "1" AccountMgmtController
+AccountMgmtController "1" --> "1" USER
+USER "1" --> "1" DBInterface
+DBInterface "1" --> "1" DB
+skinparam ActorBackgroundColor white
+skinparam ActorBorderColor #A80036
+@enduml`,
+  uc8: `@startuml
+hide circle
+allowmixing
+left to right direction
+skinparam backgroundColor white
+skinparam classBackgroundColor #FFFFC0
+skinparam classBorderColor #A80036
+skinparam classHeaderBackgroundColor #FFE0A0
+skinparam ArrowColor #A80036
+skinparam classPrivateBackgroundColor #1BA1E2
+skinparam classProtectedBackgroundColor #9400D3
+class "AcademicBgUI" <<boundary>> {
+  #showAcademicBackground()
+  #editAcademicBackground()
+  #onSaveClick()
+  #showSaveNotification()
+}
+class "AcademicBgController" <<control>> {
+  -getAcademicBackground(userID)
+  -updateAcademicBackground(data)
+  -createAcademicBackground(data)
+}
+class "STUDY_BG" <<entity>> {
+  -id
+  -userID
+  -degreeType
+  -major
+  -gpa
+  -toefl
+  -ielts
+  -sat
+  -gre
+  -gmat
+  -getStudyBGByUserID(userID)
+  -setStudyBG(data)
+  -createStudyBG(data)
+  -updateStudyBG(data)
+  -deleteStudyBG(id)
+}
+class "DBInterface" <<boundary>> {
+  -getSTUDY_BG(userID)
+  -updateSTUDY_BG(data)
+  -insertSTUDY_BG(data)
+}
+actor "User" as U
+actor "DatabaseSystem" as DB
+U "1" --> "1" AcademicBgUI
+AcademicBgUI "1" --> "1" AcademicBgController
+AcademicBgController "1" --> "1" STUDY_BG
+STUDY_BG "1" --> "1" DBInterface
+DBInterface "1" --> "1" DB
+skinparam ActorBackgroundColor white
+skinparam ActorBorderColor #A80036
+@enduml`,
+  uc9: `@startuml
+hide circle
+allowmixing
+left to right direction
+skinparam backgroundColor white
+skinparam classBackgroundColor #FFFFC0
+skinparam classBorderColor #A80036
+skinparam classHeaderBackgroundColor #FFE0A0
+skinparam ArrowColor #A80036
+skinparam classPrivateBackgroundColor #1BA1E2
+skinparam classProtectedBackgroundColor #9400D3
+class "ChatbotUI" <<boundary>> {
+  #showChatInterface()
+  #showSessionList()
+  #inputMessage()
+  #onSendClick()
+  #showChatbotResponse()
+}
+class "ChatbotController" <<control>> {
+  -loadSessions(userID)
+  -sendMessage(sessionID, message)
+  -deleteSession(sessionID)
+  -maybeUpdateSummary(sessionID)
+}
+class "ChatbotEngine" <<control>> {
+  -process(message, history, user_profile, history_summary)
+  -process_stream(message, history, user_profile, history_summary)
+  -summarizeHistory(messages)
+}
+class "CHAT_SESSION" <<entity>> {
+  -id
+  -userID
+  -title
+  -createdAt
+  -updatedAt
+  #getSessionsByUser(userID)
+  #getOrCreateSession(sessionID, userID, title)
+  #deleteSession(id)
+}
+class "CHAT_MESSAGE" <<entity>> {
+  -id
+  -sessionID
+  -role
+  -content
+  -createdAt
+  #getRecentMessages(sessionID, limit)
+  #saveMessages(sessionID, userMsg, botReply)
+}
+class "STUDY_BG" <<entity>> {
+  -id
+  -userID
+  -ielts
+  -toefl
+  -gpa
+  -sat
+  -gre
+  -gmat
+  -major
+  -level
+  #getStudyBG(userID)
+}
+class "CHAT_SUMMARY" <<entity>> {
+  -sessionID
+  -summary
+  -updatedMsgCount
+  -updatedAt
+  #getSummary(sessionID)
+  #upsertSummary(sessionID, summary, msgCount)
+  #countMessages(sessionID)
+}
+class "DBInterface" <<boundary>> {
+  -getSessions(userID)
+  -getOrCreateSession()
+  -getRecentMessages(sessionID)
+  -saveMessages(sessionID)
+  -getStudyBG(userID)
+  -getSummary(sessionID)
+  -upsertSummary(sessionID)
+  -countMessages(sessionID)
+}
+actor "User" as U
+actor "DatabaseSystem" as DB
+actor "GeminiAPI" as AI
+U "1" --> "1" ChatbotUI
+ChatbotUI "1" --> "1" ChatbotController
+ChatbotController "1" --> "1" CHAT_SESSION
+ChatbotController "1" --> "1" CHAT_MESSAGE
+ChatbotController "1" --> "1" STUDY_BG
+ChatbotController "1" --> "1" CHAT_SUMMARY
+ChatbotController "1" --> "1" ChatbotEngine
+ChatbotEngine "1" --> "1" AI
+CHAT_SESSION "1" --> "1" DBInterface
+CHAT_MESSAGE "1" --> "1" DBInterface
+STUDY_BG "1" --> "1" DBInterface
+CHAT_SUMMARY "1" --> "1" DBInterface
+DBInterface "1" --> "1" DB
+skinparam ActorBackgroundColor white
+skinparam ActorBorderColor #A80036
+@enduml`,
+  uc10: `@startuml
+hide circle
+allowmixing
+left to right direction
+skinparam backgroundColor white
+skinparam classBackgroundColor #FFFFC0
+skinparam classBorderColor #A80036
+skinparam classHeaderBackgroundColor #FFE0A0
+skinparam ArrowColor #A80036
+skinparam classPrivateBackgroundColor #1BA1E2
+skinparam classProtectedBackgroundColor #9400D3
+class "LoginUI" <<boundary>> {
+  #showLoginScreen()
+  #inputEmailAndPassword()
+  #onLoginClick()
+  #showLoginError()
+  #changePage()
+}
+class "LoginController" <<control>> {
+  -login(email, password)
+  -authenticateUser(email, password)
+  -createAccessToken(userID)
+  -createRefreshToken(userID)
+  -logout(refreshToken)
+}
+class "USER" <<entity>> {
+  -userID
+  -fullName
+  -passWord
+  -email
+  -status
+  -roleID
+  -getUSERByEmail(email)
+  -verifyPassword(password, hash)
+  #getStatus()
+  #getRoleID()
+}
+class "REFRESH_TOKEN" <<entity>> {
+  -id
+  -userID
+  -token
+  -expiresAt
+  -createdAt
+  -generateToken(userID)
+  -revokeToken(token)
+  -validateToken(token)
+  -getTokenByUserID(userID)
+}
+class "DBInterface" <<boundary>> {
+  -getUserByEmail(email)
+  -saveRefreshToken(data)
+  -deleteRefreshToken(token)
+}
+actor "User/Admin" as U
+actor "DatabaseSystem" as DB
+U "1" --> "1" LoginUI
+LoginUI "1" --> "1" LoginController
+LoginController "1" --> "1" USER
+LoginController "1" --> "1" REFRESH_TOKEN
+USER "1" --> "1" DBInterface
+REFRESH_TOKEN "1" --> "1" DBInterface
+DBInterface "1" --> "1" DB
+skinparam ActorBackgroundColor white
+skinparam ActorBorderColor #A80036
+@enduml`,
+  uc11: `@startuml
+hide circle
+allowmixing
+left to right direction
+skinparam backgroundColor white
+skinparam classBackgroundColor #FFFFC0
+skinparam classBorderColor #A80036
+skinparam classHeaderBackgroundColor #FFE0A0
+skinparam ArrowColor #A80036
+skinparam classPrivateBackgroundColor #1BA1E2
+skinparam classProtectedBackgroundColor #9400D3
+class "AdminAccountUI" <<boundary>> {
+  #showUserList()
+  #showAddUserForm()
+  #showEditUserForm()
+  #confirmDeleteUser()
+  #toggleUserStatus()
+  #showResult()
+}
+class "AdminAccountController" <<control>> {
+  #getUserList()
+  -addUser(data)
+  -updateUser(data)
+  -deleteUser(userID)
+  -toggleStatus(userID, status)
+}
+class "USER" <<entity>> {
+  -userID
+  -fullName
+  -passWord
+  -email
+  -status
+  -address
+  -phoneNumber
+  -gender
+  -roleID
+  #getAllUsers()
+  -createUser(data)
+  -updateUser(data)
+  -deleteUser(id)
+}
+class "DBInterface" <<boundary>> {
+  #getUSER()
+  -insertUSER(data)
+  -updateUSER(data)
+  -deleteUSER(userID)
+}
+actor "Admin" as A
+actor "DatabaseSystem" as DB
+A "1" --> "1" AdminAccountUI
+AdminAccountUI "1" --> "1" AdminAccountController
+AdminAccountController "1" --> "1" USER
+USER "1" --> "1" DBInterface
+DBInterface "1" --> "1" DB
+skinparam ActorBackgroundColor white
+skinparam ActorBorderColor #A80036
+@enduml`,
+  uc12: `@startuml
+hide circle
+allowmixing
+left to right direction
+skinparam backgroundColor white
+skinparam classBackgroundColor #FFFFC0
+skinparam classBorderColor #A80036
+skinparam classHeaderBackgroundColor #FFE0A0
+skinparam ArrowColor #A80036
+skinparam classPrivateBackgroundColor #1BA1E2
+skinparam classProtectedBackgroundColor #9400D3
+class "AdminUniversityUI" <<boundary>> {
+  #showUniversityList()
+  #showAddUniversityForm()
+  #showEditUniversityForm()
+  #confirmDeleteUniversity()
+  #showResult()
+}
+class "AdminUniversityController" <<control>> {
+  #getUniversityList()
+  -getUniversityDetail(id)
+  -insertUniversity(data)
+  -updateUniversity(id, data)
+  -deleteUniversity(id)
+}
+class "UNIVERSITY" <<entity>> {
+  -id
+  -name
+  -region
+  -countryID
+  -city
+  -logo
+  -overallScore
+  -rankInt
+  #getAllUniversities()
+  -getUniversityByID(id)
+  -createUniversity(data)
+  -updateUniversity(id, data)
+  -deleteUniversity(id)
+}
+class "DETAIL_INFOR" <<entity>> {
+  -id
+  -universityID
+  -fee
+  -scholarship
+  -domestic
+  -international
+  -totalStu
+  -ugRate
+  -pgRate
+  -getDetailInfor(uniID)
+  -createDetailInfor(data)
+  -updateDetailInfor(id, data)
+  -deleteDetailInfor(uniID)
+}
+class "DBInterface" <<boundary>> {
+  #getUNIVERSITY()
+  -getUniversityInfo(id)
+  -insertUniversity(data)
+  -updateUNIVERSITY(id, data)
+  -deleteUniversity(id)
+  -updateDETAIL_INFOR(data)
+}
+actor "Admin" as A
+actor "DatabaseSystem" as DB
+A "1" --> "1" AdminUniversityUI
+AdminUniversityUI "1" --> "1" AdminUniversityController
+AdminUniversityController "1" --> "1" UNIVERSITY
+AdminUniversityController "1" --> "1" DETAIL_INFOR
+UNIVERSITY "1" --> "1" DBInterface
+DETAIL_INFOR "1" --> "1" DBInterface
+DBInterface "1" --> "1" DB
+skinparam ActorBackgroundColor white
+skinparam ActorBorderColor #A80036
+@enduml`,
+};
+renderPUML();
+</script>
+
+<!-- ══════════════════════════════════════ ERD ══════════════════════════════════════ -->
+<!-- ══════════════════════ CHATBOT PIPELINE ══════════════════════ -->
+<div class="uc" id="chatbot-pipeline">
+  <div class="uc-hdr">Chatbot Processing Pipeline — Activity Diagram</div>
+  <div class="uc-body">
+    <div class="box">
+      <div class="box-hdr">Pipeline Activity Diagram (keyword-annotated)</div>
+      <div class="box-body" style="overflow-x:auto;">
+        <div id="pipeline-img" class="puml-loading">⏳ Đang tải biểu đồ pipeline...</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════ ERD ══════════════════════════════ -->
+<div class="uc" id="erd">
+  <div class="uc-hdr">Entity Relationship Diagram (ERD) — Hệ Thống UniCompare</div>
+  <div class="uc-body">
+    <div class="box">
+      <div class="box-hdr">ERD — Tất cả thực thể và quan hệ</div>
+      <div class="box-body" style="overflow-x:auto;">
+        <div id="erd-img" class="puml-loading">Loading ERD...</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  const ERD_SRC = `@startuml
+skinparam backgroundColor white
+skinparam EntityBackgroundColor #dbeafe
+skinparam EntityBorderColor #93c5fd
+skinparam EntityHeaderBackgroundColor #1e3a8a
+skinparam ArrowColor #555555
+skinparam defaultFontSize 11
+skinparam linetype ortho
+hide circle
+
+entity "COUNTRIES" as countries {
+  * id
+  --
+  name
+}
+
+entity "USERS" as users {
+  * id
+  --
+  first_name
+  last_name
+  password
+  image
+  phone_number
+  gender
+  dob
+  * country_id <<FK>>
+  email
+  main_lang
+  add_lang
+  ethnic_group
+  special
+  insert_date
+  update_date
+  role_type
+  postal_code
+  email_verification_token
+  verification_token_expiry
+}
+
+entity "REFRESH_TOKENS" as rt {
+  * id
+  --
+  * user_id <<FK>>
+  token
+  expires_at
+  created_at
+}
+
+entity "STUDY_BG" as sb {
+  * id
+  --
+  * user_id <<FK>>
+  level
+  major
+  academic_rate
+  gpa
+  graduate_year
+  act
+  gmat
+  sat
+  cat
+  gre
+  stat
+  ielts
+  toefl
+  pearson_test
+  cam_adv_test
+  inter_bac
+}
+
+entity "UNIVERSITIES" as uni {
+  * id
+  --
+  name
+  region
+  * country_id <<FK>>
+  city
+  logo
+  overall_score
+  rank_int
+  path
+}
+
+entity "DETAIL_INFORS" as di {
+  * id
+  --
+  * university_id <<FK>>
+  fee
+  scholarship
+  domestic
+  international
+  english_test
+  academic_test
+  total_stu
+  ug_rate
+  pg_rate
+  inter_total
+  inter_ug_rate
+  inter_pg_rate
+}
+
+entity "ENTRY_INFOR" as ei {
+  * id
+  --
+  * university_id <<FK>>
+  degree_type
+  SAT
+  GRE
+  GMAT
+  ACT
+  ATAR
+  GPA
+  TOEFL
+  IELTS
+}
+
+entity "UNIVERSITY_TEXTS" as ut {
+  * id
+  --
+  * university_id <<FK>>
+  about
+  university_information
+  scholarships
+  rankings_and_ratings
+}
+
+entity "SCHOLARSHIPS" as sc {
+  * id
+  --
+  * university_id <<FK>>
+  name
+  value
+  duration
+  criteria
+}
+
+entity "INDICATORS" as ind {
+  * id
+  --
+  name
+}
+
+entity "SCORE_TYPES" as stype {
+  * id
+  --
+  name
+}
+
+entity "SCORES" as scores {
+  * id
+  --
+  * indicator_id <<FK>>
+  * score_type_id <<FK>>
+  * university_id <<FK>>
+  rank_int
+  score
+}
+
+entity "CHAT_SESSIONS" as cs {
+  * id (varchar)
+  --
+  * user_id <<FK>>
+  title
+  created_at
+  updated_at
+}
+
+entity "CHAT_MESSAGES" as cm {
+  * id
+  --
+  * session_id <<FK>>
+  role
+  content
+  created_at
+}
+
+entity "CHAT_SESSION_SUMMARIES" as css {
+  * session_id <<FK/PK>>
+  --
+  summary
+  updated_msg_count
+  updated_at
+}
+
+users -[hidden]right- countries
+countries -[hidden]right- uni
+countries ||--o{ users
+countries ||--o{ uni
+users ||--o{ rt
+users ||--|| sb
+users ||--o{ cs
+uni ||--|| di
+uni ||--o{ ei
+uni ||--|| ut
+uni ||--o{ sc
+uni ||--o{ scores
+ind ||--o{ scores
+stype ||--o{ scores
+cs ||--o{ cm
+cs ||--|| css
+@enduml`;
+
+  const encoded = encodePUML(ERD_SRC);
+  const url = 'https://www.plantuml.com/plantuml/svg/' + encoded;
+  document.getElementById('erd-img').innerHTML =
+    '<img class="puml-img" src="' + url + '" alt="ERD">';
+})();
+
+/* ══════════════════════════════════════════════════
+   Chatbot Processing Pipeline — Activity Diagram
+   ══════════════════════════════════════════════════ */
+(() => {
+  const PIPELINE_SRC = `
+@startuml
+skinparam backgroundColor #F8FAFF
+skinparam activity {
+  BackgroundColor #DBEAFE
+  BorderColor #2563EB
+  FontColor #1E3A8A
+  FontSize 12
+  FontStyle bold
+  ArrowColor #2563EB
+  DiamondBackgroundColor #FEF9C3
+  DiamondBorderColor #D97706
+  DiamondFontColor #92400E
+}
+
+title Chatbot Processing Pipeline
+
+start
+
+:chat_stream()          ← Bước 1: nhận input;
+:_load_history/summary/profile()  ← Bước 1: khôi phục session;
+:IntentRouter.classify()     ← Bước 2: DOMAIN / CHITCHAT;
+
+if (CHITCHAT?) then (yes)
+  :_stream_chitchat()   ← skip Bước 3, đi thẳng Bước 5-6;
+else (DOMAIN)
+  :text_to_sql.py       ← Bước 3: sinh SQL;
+  :validate_sql()       ← Bước 3: chặn SQL injection;
+  :execute_query()      ← Bước 3: chạy SQL;
+  :check_data_quality() ← Bước 3: check data đủ không;
+
+  if (Data thiếu?) then (yes)
+    :DOMAIN_POOR_PROMPT  ← trigger ONLINE_SEARCH;
+  else (no)
+    :_build_domain_prompt() ← Bước 4: ghép System + History + Data;
+  endif
+endif
+
+:GeminiClient.stream()  ← Bước 5: gọi Gemini streaming;
+:_sync_gen_to_sse()     ← Bước 6: chunks → SSE events;
+:appendText() / Vue.js  ← Bước 6: render UI;
+:_save_messages()       ← Bước 7: lưu DB;
+
+if (>= 10 msgs mới?) then (yes)
+  :_maybe_update_summary() ← Bước 7: tóm tắt lịch sử;
+endif
+
+stop
+@enduml`;
+
+  const encoded = encodePUML(PIPELINE_SRC);
+  const url = 'https://www.plantuml.com/plantuml/svg/' + encoded;
+  document.getElementById('pipeline-img').innerHTML =
+    '<img class="puml-img" src="' + url + '" alt="Chatbot Pipeline">';
+})();
+
+</script>
+
+</body>
+</html>
+

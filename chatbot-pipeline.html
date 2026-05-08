@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Chatbot Processing Pipeline</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', Arial, sans-serif;
+    background: #f0f4f8;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    min-height: 100vh;
+    padding: 40px 20px;
+  }
+  .wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    max-width: 900px;
+  }
+  h2 {
+    font-size: 20px;
+    color: #1a237e;
+    margin-bottom: 32px;
+    letter-spacing: 0.5px;
+    text-align: center;
+    font-weight: 700;
+  }
+  .pipeline {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    gap: 0;
+  }
+  .step-row {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    justify-content: center;
+    gap: 0;
+  }
+  .step-box {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    background: #fff;
+    border-radius: 12px;
+    padding: 16px 20px;
+    width: 640px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.10);
+    border-left: 5px solid #3949ab;
+    position: relative;
+    transition: box-shadow 0.2s;
+  }
+  .step-box:hover { box-shadow: 0 4px 18px rgba(57,73,171,0.18); }
+  .step-num {
+    min-width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: #3949ab;
+    color: #fff;
+    font-weight: 700;
+    font-size: 15px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+  .step-content { flex: 1; }
+  .step-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: #1a237e;
+    margin-bottom: 4px;
+  }
+  .step-desc {
+    font-size: 12.5px;
+    color: #444;
+    line-height: 1.6;
+  }
+  .step-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 7px;
+  }
+  .tag {
+    font-size: 10.5px;
+    padding: 2px 9px;
+    border-radius: 20px;
+    font-weight: 600;
+    background: #e8eaf6;
+    color: #3949ab;
+    border: 1px solid #c5cae9;
+  }
+  .tag.green  { background: #e8f5e9; color: #2e7d32; border-color: #a5d6a7; }
+  .tag.orange { background: #fff3e0; color: #e65100; border-color: #ffcc80; }
+  .tag.red    { background: #fce4ec; color: #c62828; border-color: #f48fb1; }
+  .tag.teal   { background: #e0f2f1; color: #00695c; border-color: #80cbc4; }
+  .tag.purple { background: #f3e5f5; color: #6a1b9a; border-color: #ce93d8; }
+
+  /* arrow between steps */
+  .arrow-down {
+    width: 2px;
+    height: 28px;
+    background: #3949ab;
+    position: relative;
+    margin: 0 auto;
+  }
+  .arrow-down::after {
+    content: '';
+    position: absolute;
+    bottom: -8px;
+    left: 50%;
+    transform: translateX(-50%);
+    border-left: 7px solid transparent;
+    border-right: 7px solid transparent;
+    border-top: 10px solid #3949ab;
+  }
+
+  /* side actors */
+  .side-actor {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 110px;
+    flex-shrink: 0;
+  }
+  .side-actor .actor-box {
+    background: #1a237e;
+    color: #fff;
+    border-radius: 8px;
+    padding: 7px 10px;
+    font-size: 11px;
+    font-weight: 600;
+    text-align: center;
+    white-space: nowrap;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+  }
+  .side-actor.right { margin-left: 16px; }
+  .side-actor.left  { margin-right: 16px; }
+  .connector-h {
+    height: 2px;
+    width: 16px;
+    background: #3949ab;
+    flex-shrink: 0;
+  }
+  .no-actor { width: 126px; flex-shrink: 0; }
+
+  /* legend */
+  .legend {
+    display: flex;
+    gap: 18px;
+    margin-top: 28px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: #444;
+  }
+  .legend-dot {
+    width: 14px; height: 14px;
+    border-radius: 3px;
+  }
+</style>
+</head>
+<body>
+<div class="wrapper">
+  <h2>Chatbot Processing Pipeline</h2>
+  <div class="pipeline">
+
+    <!-- Step 1 -->
+    <div class="step-row">
+      <div class="no-actor"></div>
+      <div class="step-box">
+        <div class="step-num">1</div>
+        <div class="step-content">
+          <div class="step-title">User Input &amp; Session Restoration</div>
+          <div class="step-desc">User submits a message via the chat interface. The backend receives the message, session_id, and user_id, then restores session context: conversation history, history summary, and the user's academic profile.</div>
+          <div class="step-tags">
+            <span class="tag">Vue.js Frontend</span>
+            <span class="tag teal">FastAPI Backend</span>
+            <span class="tag green">MySQL</span>
+          </div>
+        </div>
+      </div>
+      <div class="no-actor"></div>
+    </div>
+
+    <div class="arrow-down"></div>
+
+    <!-- Step 2 -->
+    <div class="step-row">
+      <div class="no-actor"></div>
+      <div class="step-box" style="border-left-color:#f57c00">
+        <div class="step-num" style="background:#f57c00">2</div>
+        <div class="step-content">
+          <div class="step-title">Intent Recognition</div>
+          <div class="step-desc">A bilingual keyword classifier analyzes the input to determine whether it is a <em>domain-specific query</em> requiring database retrieval or a <em>general conversational message</em>. Reduces unnecessary SQL calls and improves response speed.</div>
+          <div class="step-tags">
+            <span class="tag orange">Domain Query</span>
+            <span class="tag">General Chat</span>
+          </div>
+        </div>
+      </div>
+      <div class="no-actor"></div>
+    </div>
+
+    <div class="arrow-down"></div>
+
+    <!-- Step 3 -->
+    <div class="step-row">
+      <div class="no-actor"></div>
+      <div class="step-box" style="border-left-color:#6a1b9a">
+        <div class="step-num" style="background:#6a1b9a">3</div>
+        <div class="step-content">
+          <div class="step-title">Data Retrieval — Text-to-SQL</div>
+          <div class="step-desc">For domain queries, the system sends the question with full DB schema, SQL rules, examples, and conversation history to the LLM to generate a SQL statement. The query is security-validated (<em>SELECT-only</em>) before execution against MySQL.</div>
+          <div class="step-tags">
+            <span class="tag purple">Text-to-SQL</span>
+            <span class="tag red">Security Validation</span>
+            <span class="tag green">MySQL</span>
+          </div>
+        </div>
+      </div>
+      <div class="no-actor"></div>
+    </div>
+
+    <div class="arrow-down"></div>
+
+    <!-- Step 4 -->
+    <div class="step-row">
+      <div class="side-actor left">
+        <div class="actor-box">ChromaDB<br/>(RAG)</div>
+      </div>
+      <div class="connector-h"></div>
+      <div class="step-box" style="border-left-color:#00695c">
+        <div class="step-num" style="background:#00695c">4</div>
+        <div class="step-content">
+          <div class="step-title">Context Construction</div>
+          <div class="step-desc">The final prompt is assembled from: SQL query results, supplementary descriptive text retrieved from ChromaDB via cosine similarity search on sentence embeddings, system prompt, conversation history summary, and user academic profile.</div>
+          <div class="step-tags">
+            <span class="tag teal">RAG (ChromaDB)</span>
+            <span class="tag green">SQL Results</span>
+            <span class="tag">User Profile</span>
+            <span class="tag">History Summary</span>
+          </div>
+        </div>
+      </div>
+      <div class="no-actor"></div>
+    </div>
+
+    <div class="arrow-down"></div>
+
+    <!-- Step 5 -->
+    <div class="step-row">
+      <div class="no-actor"></div>
+      <div class="step-box" style="border-left-color:#1565c0">
+        <div class="step-num" style="background:#1565c0">5</div>
+        <div class="step-content">
+          <div class="step-title">Response Generation</div>
+          <div class="step-desc">The assembled prompt is sent to the LLM in streaming mode. Response tokens are generated and streamed incrementally. An automatic retry mechanism handles temporary API failures.</div>
+          <div class="step-tags">
+            <span class="tag" style="background:#e3f2fd;color:#1565c0;border-color:#90caf9">LLM (Gemini)</span>
+            <span class="tag">Streaming</span>
+            <span class="tag orange">Auto-retry</span>
+          </div>
+        </div>
+      </div>
+      <div class="no-actor"></div>
+    </div>
+
+    <div class="arrow-down"></div>
+
+    <!-- Step 6 -->
+    <div class="step-row">
+      <div class="no-actor"></div>
+      <div class="step-box" style="border-left-color:#c62828">
+        <div class="step-num" style="background:#c62828">6</div>
+        <div class="step-content">
+          <div class="step-title">SSE Stream Delivery</div>
+          <div class="step-desc">Each response chunk is immediately forwarded to the frontend via Server-Sent Events, producing a typewriter effect. Special events (online search triggers, session completion signals) are embedded in the stream. FastAPI's async architecture supports concurrent users without blocking.</div>
+          <div class="step-tags">
+            <span class="tag red">SSE</span>
+            <span class="tag teal">FastAPI Async</span>
+            <span class="tag">Vue.js Frontend</span>
+          </div>
+        </div>
+      </div>
+      <div class="no-actor"></div>
+    </div>
+
+    <div class="arrow-down"></div>
+
+    <!-- Step 7 -->
+    <div class="step-row">
+      <div class="no-actor"></div>
+      <div class="step-box" style="border-left-color:#2e7d32">
+        <div class="step-num" style="background:#2e7d32">7</div>
+        <div class="step-content">
+          <div class="step-title">Storage &amp; History Summarization</div>
+          <div class="step-desc">The full conversation turn is persisted to MySQL. When a session accumulates 10 or more new messages since the last summary, the LLM compresses the conversation into a concise 3–5 sentence summary, which is loaded at the start of each subsequent request to maintain long-term context without inflating prompt size.</div>
+          <div class="step-tags">
+            <span class="tag green">MySQL</span>
+            <span class="tag" style="background:#e3f2fd;color:#1565c0;border-color:#90caf9">LLM Summarization</span>
+            <span class="tag teal">Context Management</span>
+          </div>
+        </div>
+      </div>
+      <div class="no-actor"></div>
+    </div>
+
+  </div><!-- end pipeline -->
+
+  <div class="legend">
+    <div class="legend-item"><div class="legend-dot" style="background:#3949ab"></div> Core step</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#f57c00"></div> Classification</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#6a1b9a"></div> SQL Generation</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#00695c"></div> Context Assembly</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#c62828"></div> Stream Delivery</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#2e7d32"></div> Persistence</div>
+  </div>
+</div>
+</body>
+</html>
