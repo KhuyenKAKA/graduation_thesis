@@ -416,20 +416,24 @@ const handleSubmit = async () => {
       path:          form.value.path || null,
       rank_int:      form.value.rank_int !== '' ? Number(form.value.rank_int) : null,
       overall_score: form.value.overall_score !== '' ? Number(form.value.overall_score) : null,
-      detail: {
-        fee:           form.value.detail.fee !== '' ? String(form.value.detail.fee) : null,
-        scholarship:   form.value.detail.scholarship,
-        domestic:      form.value.detail.domestic !== '' ? String(form.value.detail.domestic) : null,
-        international: form.value.detail.international !== '' ? String(form.value.detail.international) : null,
-        english_test:  form.value.detail.english_test || null,
-        academic_test: form.value.detail.academic_test || null,
-        total_stu:     form.value.detail.total_stu !== '' ? String(form.value.detail.total_stu) : null,
-        ug_rate:       form.value.detail.ug_rate !== '' ? String(form.value.detail.ug_rate) : null,
-        pg_rate:       form.value.detail.pg_rate !== '' ? String(form.value.detail.pg_rate) : null,
-        inter_total:   form.value.detail.inter_total !== '' ? String(form.value.detail.inter_total) : null,
-        inter_ug_rate: form.value.detail.inter_ug_rate !== '' ? String(form.value.detail.inter_ug_rate) : null,
-        inter_pg_rate: form.value.detail.inter_pg_rate !== '' ? String(form.value.detail.inter_pg_rate) : null,
-      },
+      detail: (() => {
+        const toStr = v => (v != null && v !== '') ? String(v) : null
+        const d = form.value.detail
+        return {
+          fee:           toStr(d.fee),
+          scholarship:   d.scholarship,
+          domestic:      toStr(d.domestic),
+          international: toStr(d.international),
+          english_test:  d.english_test || null,
+          academic_test: d.academic_test || null,
+          total_stu:     toStr(d.total_stu),
+          ug_rate:       toStr(d.ug_rate),
+          pg_rate:       toStr(d.pg_rate),
+          inter_total:   toStr(d.inter_total),
+          inter_ug_rate: toStr(d.inter_ug_rate),
+          inter_pg_rate: toStr(d.inter_pg_rate),
+        }
+      })(),
       entry: {
         '1': form.value.entry[1],
         '2': form.value.entry[2],
