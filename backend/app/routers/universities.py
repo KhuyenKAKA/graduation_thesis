@@ -317,7 +317,12 @@ async def create_university(
     db: Session = Depends(get_db),
 ):
     """Create a new university with detail info, entry requirements, and scores."""
-    result = UniversityModel.create_university(db, payload.model_dump())
+    try:
+        result = UniversityModel.create_university(db, payload.model_dump())
+    except (OperationalError, InterfaceError) as exc:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=_DB_ERROR) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     return result
 
 
@@ -328,7 +333,12 @@ async def update_university(
     db: Session = Depends(get_db),
 ):
     """Update an existing university."""
-    result = UniversityModel.update_university(db, university_id, payload.model_dump())
+    try:
+        result = UniversityModel.update_university(db, university_id, payload.model_dump())
+    except (OperationalError, InterfaceError) as exc:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=_DB_ERROR) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     if result is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="University not found")
     return result

@@ -602,7 +602,11 @@ class UniversityModel:
             sc.score = float(sc_val) if sc_val not in (None, "") else None
             sc.rank_int = int(rk_val) if rk_val not in (None, "") else None
 
-        db.commit()
+        try:
+            db.commit()
+        except Exception:
+            db.rollback()
+            raise
         db.refresh(uni)
         return {"id": uni.id, "name": uni.name}
 
