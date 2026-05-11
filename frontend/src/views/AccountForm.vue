@@ -284,7 +284,7 @@ onMounted(async () => {
   if (!isEdit.value) return
   try {
     const res = await userAPI.getUser(userId.value)
-    populateForm(res.data)
+    populateForm(res)
   } catch {
     message.warning('Could not load account data')
   }

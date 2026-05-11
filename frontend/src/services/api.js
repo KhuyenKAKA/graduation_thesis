@@ -71,8 +71,17 @@ export const userAPI = {
   changePassword(data) {
     return api.put('/users/me/password', data).then(r => r.data)
   },
+  getAll() {
+    return api.get('/users').then(r => r.data)
+  },
   getUser(userId) {
-    return api.get(`/users/${userId}`).then(r => new User(r.data))
+    return api.get(`/users/${userId}`).then(r => r.data)
+  },
+  createUser(payload) {
+    return api.post('/users', payload).then(r => r.data)
+  },
+  updateUser(userId, payload) {
+    return api.put(`/users/${userId}`, payload).then(r => r.data)
   },
   uploadAvatar(file) {
     const form = new FormData()
@@ -124,6 +133,15 @@ export const universityAPI = {
   },
   getChartData(universityIds) {
     return api.post('/universities/chart-data', { university_ids: universityIds })
+  },
+  create(payload) {
+    return api.post('/universities', payload).then(r => r.data)
+  },
+  update(id, payload) {
+    return api.put(`/universities/${id}`, payload).then(r => r.data)
+  },
+  delete(id) {
+    return api.delete(`/universities/${id}`).then(r => r.data)
   }
 }
 
