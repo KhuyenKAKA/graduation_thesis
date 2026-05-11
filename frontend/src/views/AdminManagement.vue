@@ -1,6 +1,6 @@
 <template>
   <div class="admin-wrapper">
-    <Header />
+    <Header :adminMode="true" />
 
     <div class="admin-content">
       <!-- Toolbar -->

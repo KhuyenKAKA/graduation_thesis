@@ -1,6 +1,6 @@
 <template>
   <div class="form-wrapper">
-    <Header />
+    <Header :adminMode="true" />
 
     <div class="form-content">
       <!-- Page Header -->
