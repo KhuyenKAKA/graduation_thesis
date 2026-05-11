@@ -278,9 +278,10 @@ const clearStoredSession = () => localStorage.removeItem(SESSION_KEY)
 
 // ── Load sessions (sidebar) ──────────────────────────────
 const loadSessions = async () => {
-  if (!authStore.isAuthenticated) return
+  const userId = getCurrentUserId()
+  if (!userId) return
   try {
-    const { data } = await chatbotAPI.getSessions()
+    const { data } = await chatbotAPI.getSessions(userId)
     chatHistory.value = data.map(s => ({ id: s.id, title: s.title }))
   } catch (e) {
     console.error('Failed to load sessions', e)
@@ -397,9 +398,8 @@ const sendMessage = async () => {
       }
     }
   } catch (err) {
-    const status = err.response?.status || (err.message?.match(/\d{3}/)?.[0] | 0)
-    const errMsg = status === 503
-      ? 'Cannot connect to the database. Please try again later.'
+    const errMsg = err.message?.includes('503')
+      ? 'The AI service is temporarily unavailable. Please try again in a moment.'
       : 'Something went wrong. Please check your connection and try again.'
     // If streaming hadn't started yet, push a fresh error bubble
     if (!isStreaming.value) {
@@ -518,7 +518,6 @@ const startNewChat = () => {
 const switchSession = async (session) => {
   activeSessionId.value = session.id
   storeSessionId(session.id)
-  clearChat()
   await loadMessages(session.id)
 }
 

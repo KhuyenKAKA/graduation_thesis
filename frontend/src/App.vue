@@ -3,7 +3,11 @@
 </template>
 
 <script setup>
-// Root component - chỉ render router-view
+import { onMounted } from 'vue'
+import { useAuthStore } from '@/stores/auth'
+
+const authStore = useAuthStore()
+onMounted(() => { authStore.initUser() })
 </script>
 
 <style>

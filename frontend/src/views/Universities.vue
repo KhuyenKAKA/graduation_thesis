@@ -522,7 +522,7 @@ const loadUniversities = async () => {
   loading.value = true
   try {
     const response = await universityAPI.getAll(2000)
-    universities.value = response.map(u => normalizeUniversity(u.toPlainObject()))
+    universities.value = response.data.map(u => normalizeUniversity(u))
   } catch (err) {
     const detail = err.response?.data?.detail || 'Cannot connect to the database. Please try again later.'
     message.error(detail)
@@ -553,7 +553,7 @@ const handleSearch = async () => {
   loading.value = true
   try {
     const response = await universityAPI.search(searchQuery.value)
-    universities.value = response.map(u => normalizeUniversity(u.toPlainObject()))
+    universities.value = response.data.map(u => normalizeUniversity(u))
     currentPage.value = 1
     activeFilters.value = []
   } catch (err) {
@@ -592,7 +592,7 @@ const applyFilters = async () => {
       scholarship: isAuthenticated.value && filterForm.value.scholarship ? filterForm.value.scholarship : undefined,
     }
     const response = await universityAPI.filter(filters)
-    universities.value = response.map(u => normalizeUniversity(u.toPlainObject()))
+    universities.value = response.data.map(u => normalizeUniversity(u))
     showFilterModal.value = false
     currentPage.value = 1
     activeFilters.value = []

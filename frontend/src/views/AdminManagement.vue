@@ -1,6 +1,6 @@
 <template>
   <div class="admin-wrapper">
-    <Header :admin-mode="true" />
+    <Header />
 
     <div class="admin-content">
       <!-- Toolbar -->
@@ -33,7 +33,7 @@
         </div>
 
         <div class="toolbar-right">
-          <span class="info-date">Information from: 29/03/2026</span>
+          <span class="info-date">Information from: 19/06/2025</span>
           <span class="result-count">{{ activeTab === 'universities' ? filteredList.length : filteredAccounts.length }} results</span>
           <button v-if="activeTab === 'universities'" class="btn-add" @click="openAddModal">
             + Add University
@@ -366,21 +366,11 @@ const confirmDeleteAccount = (acc) => {
 const executeDelete = async () => {
   if (!deleteTarget.value) return
   if (deleteType.value === 'university') {
-    try {
-      await universityAPI.delete(deleteTarget.value.id)
-      universities.value = universities.value.filter(u => u.id !== deleteTarget.value.id)
-      message.success(`"${deleteTarget.value.name}" has been removed`)
-    } catch {
-      message.error('Failed to delete university. Please try again.')
-    }
+    universities.value = universities.value.filter(u => u.id !== deleteTarget.value.id)
+    message.success(`"${deleteTarget.value.name}" has been removed`)
   } else {
-    try {
-      await userAPI.deleteUser(deleteTarget.value.id)
-      accounts.value = accounts.value.filter(a => a.id !== deleteTarget.value.id)
-      message.success(`Account "${deleteTarget.value.email}" has been removed`)
-    } catch {
-      message.error('Failed to delete account. Please try again.')
-    }
+    accounts.value = accounts.value.filter(a => a.id !== deleteTarget.value.id)
+    message.success(`Account "${deleteTarget.value.email}" has been removed`)
   }
   deleteTarget.value = null
 }

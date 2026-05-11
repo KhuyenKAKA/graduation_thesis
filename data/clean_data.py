@@ -2,12 +2,12 @@ import re
 import mysql.connector
 from enum import Enum
 
-# ===================== ENUM LOẠI BẰNG =====================
+
 class TypeDegree(Enum):
     Bachelor = 1
     Master = 2
 
-# ===================== KẾT NỐI DATABASE =====================
+
 def connect_db():
     return mysql.connector.connect(
         host="localhost",
@@ -80,7 +80,7 @@ def clean_data(value:str):
                 Bachelor_requirement[Bachelor_infor[data_index]] = Bachelor_infor[data_index+1] 
     return haveBachelor, Bachelor_requirement, haveMaster, Master_requirement
 
-# ===================== GHI DỮ LIỆU =====================
+
 def process_entry_infor():
     conn = connect_db()
     cursor = conn.cursor()

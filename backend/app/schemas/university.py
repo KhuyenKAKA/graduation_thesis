@@ -10,8 +10,8 @@ class ScholarshipItem(BaseModel):
     """Schema for a single scholarship entry"""
     id: Optional[int] = None
     name: str = ""
-    value: Optional[float] = None
-    duration: Optional[str] = None
+    value: Optional[Any] = None
+    duration: Optional[Any] = None
     criteria: Optional[str] = None
 
 

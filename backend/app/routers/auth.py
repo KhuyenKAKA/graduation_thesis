@@ -23,7 +23,7 @@ from app.models.study_bg import StudyBGModel
 from app.utils.security import verify_password
 from app.utils.auth import create_access_token, create_refresh_token, verify_token
 from app.utils.email import send_verification_code_email
-from app.database import execute_query, get_db
+from app.database import get_db
 from app.utils.rate_limit import limiter
 from datetime import datetime, timedelta
 from app.config import settings
@@ -164,13 +164,13 @@ async def login(request: Request, login_data: LoginRequest, db: Session = Depend
 
     # Store refresh token in database
     try:
+        from app.entities.refresh_token import RefreshToken
         expires_at = datetime.utcnow() + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
-        sql = """
-            INSERT INTO refresh_tokens (user_id, token, expires_at)
-            VALUES (%s, %s, %s)
-        """
-        execute_query(sql, (user['id'], refresh_token, expires_at))
+        rt = RefreshToken(user_id=user['id'], token=refresh_token, expires_at=expires_at)
+        db.add(rt)
+        db.commit()
     except Exception as e:
+        db.rollback()
         print(f"Warning: Could not store refresh token: {e}")
         # Continue anyway - token is still valid
 
@@ -212,11 +212,22 @@ async def refresh_access_token(token_data: TokenRefresh):
 
     # Check if refresh token exists in database and not expired
     try:
-        sql = """
-            SELECT * FROM refresh_tokens
-            WHERE token = %s AND user_id = %s AND expires_at > NOW()
-        """
-        token_record = execute_query(sql, (token_data.refresh_token, user_id), fetch=True, fetch_one=True)
+        from app.entities.refresh_token import RefreshToken
+        from app.database import SessionLocal
+        from datetime import timezone
+        _db = SessionLocal()
+        try:
+            token_record = (
+                _db.query(RefreshToken)
+                .filter(
+                    RefreshToken.token == token_data.refresh_token,
+                    RefreshToken.user_id == int(user_id),
+                    RefreshToken.expires_at > datetime.utcnow(),
+                )
+                .first()
+            )
+        finally:
+            _db.close()
 
         if not token_record:
             raise HTTPException(
@@ -227,7 +238,6 @@ async def refresh_access_token(token_data: TokenRefresh):
         raise
     except Exception as e:
         print(f"Error checking refresh token: {e}")
-        # If table doesn't exist yet, skip check but log warning
         pass
 
     # Create new access token
@@ -264,8 +274,16 @@ async def logout(token_data: TokenRefresh):
 
     # Delete refresh token from database
     try:
-        sql = "DELETE FROM refresh_tokens WHERE token = %s"
-        execute_query(sql, (token_data.refresh_token,))
+        from app.entities.refresh_token import RefreshToken
+        from app.database import SessionLocal
+        _db = SessionLocal()
+        try:
+            _db.query(RefreshToken).filter(
+                RefreshToken.token == token_data.refresh_token
+            ).delete(synchronize_session=False)
+            _db.commit()
+        finally:
+            _db.close()
     except Exception as e:
         print(f"Warning: Could not delete refresh token: {e}")
         # Continue anyway
@@ -341,3 +359,4 @@ async def forgot_password_reset(request: Request, data: ForgotPasswordResetReque
         )
 
     return MessageResponse(message="Password reset successfully")
+ 

@@ -1,96 +1,83 @@
 """
 University Model - Data access layer for universities (SQLAlchemy ORM session).
 
-Complex multi-JOIN queries use db.execute(text(...)) with named bind params.
-Simple lookups use db.query(University) ORM syntax.
+All queries use SQLAlchemy ORM — no raw SQL.
 """
-from sqlalchemy.orm import Session
-from sqlalchemy import text
+from sqlalchemy.orm import Session, joinedload, subqueryload
+from sqlalchemy import cast, func, Numeric
 from app.entities.university import University
+from app.entities.country import Country
 from app.entities.detail_infor import DetailInfor
 from app.entities.entry_infor import EntryInfor
+from app.entities.score import Score
+from app.entities.indicator import Indicator
+from app.entities.score_type import ScoreType
 from app.entities.enums import REGION_LABELS
 from typing import Optional, Dict, Any, List
 
 
-_SCORE_JOIN_SELECT = """
-    u.id,
-    u.rank_int,
-    u.overall_score,
-    u.name        AS university_name,
-    u.city,
-    c.region_id,
-    u.country_id,
-    u.path,
-    c.name        AS country_name,
-    u.logo,
-    st.name       AS score_type,
-    i.name        AS indicator_name,
-    s.score
-"""
-
-_SCORE_JOINS = """
-    LEFT JOIN countries   c  ON u.country_id      = c.id
-    LEFT JOIN scores      s  ON u.id              = s.university_id
-    LEFT JOIN indicators  i  ON i.id              = s.indicator_id
-    LEFT JOIN score_types st ON st.id             = i.score_type_id
-"""
+def _eager_opts():
+    """Standard joinedload options to fetch scores + country in one query."""
+    return [
+        joinedload(University.country),
+        subqueryload(University.score_list)
+        .joinedload(Score.indicator)
+        .joinedload(Indicator.score_type),
+    ]
 
 
-def _build_uni_map(rows) -> Dict[int, University]:
-    """Group flat JOIN rows into a dict of University entities keyed by id."""
-    uni_map: Dict[int, University] = {}
-    for row in rows:
-        row = dict(row)
-        uid = row["id"]
-        if uid not in uni_map:
-            uni_map[uid] = University(
-                id=row["id"],
-                rank_int=row["rank_int"],
-                overall_score=row["overall_score"] or 0.0,
-                name=row["university_name"],
-                city=row["city"],
-                region_id=row.get("region_id"),
-                country_id=row.get("country_id"),
-                path=row.get("path"),
-                country_name=row["country_name"],
-                logo=row["logo"],
-            )
-        if row["score_type"] and row["indicator_name"]:
-            uni_map[uid].add_score(row["score_type"], row["indicator_name"], row["score"])
-    return uni_map
+def _uni_to_dict(uni: University) -> Dict[str, Any]:
+    """Convert an ORM University (with eager-loaded relationships) to the response dict."""
+    scores: Dict[str, Dict[str, Optional[float]]] = {}
+    for sc in uni.score_list:
+        if sc.indicator and sc.indicator.score_type:
+            cat = sc.indicator.score_type.name
+            ind = sc.indicator.name
+            scores.setdefault(cat, {})[ind] = sc.score
+
+    region_id = uni.country.region_id if uni.country else None
+    return {
+        "id": uni.id,
+        "name": uni.name,
+        "region_id": region_id,
+        "region": REGION_LABELS.get(region_id) if region_id else None,
+        "country_id": uni.country_id,
+        "city": uni.city,
+        "logo": uni.logo,
+        "overall_score": uni.overall_score,
+        "rank": uni.rank_int,
+        "rank_int": uni.rank_int,
+        "path": uni.path,
+        "country": uni.country.name if uni.country else None,
+        "country_name": uni.country.name if uni.country else None,
+        "scores": scores,
+    }
 
 
 class UniversityModel:
 
     @staticmethod
     def get_all_universities(db: Session, limit: int = 50) -> List[Dict[str, Any]]:
-        sql = text(f"""
-            SELECT {_SCORE_JOIN_SELECT}
-            FROM (
-                SELECT id, rank_int, overall_score, name, city, country_id, path, logo
-                FROM universities
-                ORDER BY rank_int ASC, id ASC
-                LIMIT :limit
-            ) u
-            {_SCORE_JOINS}
-            ORDER BY u.rank_int ASC, u.id ASC
-        """)
-        rows = db.execute(sql, {"limit": limit}).mappings().all()
-        return [u.to_dict() for u in _build_uni_map(rows).values()]
+        unis = (
+            db.query(University)
+            .options(*_eager_opts())
+            .order_by(University.rank_int.asc(), University.id.asc())
+            .limit(limit)
+            .all()
+        )
+        return [_uni_to_dict(u) for u in unis]
 
     @staticmethod
     def search_universities_by_name(db: Session, name: str) -> List[Dict[str, Any]]:
-        sql = text(f"""
-            SELECT {_SCORE_JOIN_SELECT}
-            FROM universities u
-            {_SCORE_JOINS}
-            WHERE u.name LIKE :pattern
-            ORDER BY u.rank_int ASC
-            LIMIT 50
-        """)
-        rows = db.execute(sql, {"pattern": f"%{name}%"}).mappings().all()
-        return [u.to_dict() for u in _build_uni_map(rows).values()]
+        unis = (
+            db.query(University)
+            .options(*_eager_opts())
+            .filter(University.name.ilike(f"%{name}%"))
+            .order_by(University.rank_int.asc())
+            .limit(50)
+            .all()
+        )
+        return [_uni_to_dict(u) for u in unis]
 
     @staticmethod
     def get_regions(db: Session) -> List[dict]:
@@ -139,110 +126,91 @@ class UniversityModel:
         fee_max: Optional[float] = None,
         scholarship: Optional[str] = None,
     ) -> List[Dict[str, Any]]:
-        where_clauses = ["1=1"]
-        params: Dict[str, Any] = {}
+        query = db.query(University).options(*_eager_opts())
 
-        if region_id is not None:
-            where_clauses.append("c.region_id = :region_id")
-            params["region_id"] = region_id
-        if country:
-            where_clauses.append("c.name = :country_name")
-            params["country_name"] = country
+        # Country/region filters require a join to countries
+        if region_id is not None or country:
+            query = query.join(Country, University.country_id == Country.id)
+            if region_id is not None:
+                query = query.filter(Country.region_id == region_id)
+            if country:
+                query = query.filter(Country.name == country)
+
         if city:
-            where_clauses.append("u.city LIKE :city")
-            params["city"] = f"%{city}%"
+            query = query.filter(University.city.ilike(f"%{city}%"))
         if min_rank is not None:
-            where_clauses.append("u.rank_int >= :min_rank")
-            params["min_rank"] = min_rank
+            query = query.filter(University.rank_int >= min_rank)
         if max_rank is not None:
-            where_clauses.append("u.rank_int <= :max_rank")
-            params["max_rank"] = max_rank
+            query = query.filter(University.rank_int <= max_rank)
 
-        # Map từ tên hiển thị → tên cột trong entry_infor (uppercase)
-        TEST_COLUMN_MAP = {
-            "IELTS": "IELTS",
-            "TOEFL": "TOEFL",
-            "SAT": "SAT",
-            "GRE": "GRE",
-            "GMAT": "GMAT",
-            "ACT": "ACT",
-            "ATAR": "ATAR",
-            "GPA": "GPA",
+        # Entry test filters: university must have at least one entry_infor row
+        # with the given test column non-null
+        TEST_ATTR_MAP = {
+            "IELTS": EntryInfor.ielts,
+            "TOEFL": EntryInfor.toefl,
+            "SAT":   EntryInfor.sat,
+            "GRE":   EntryInfor.gre,
+            "GMAT":  EntryInfor.gmat,
+            "ACT":   EntryInfor.act,
+            "ATAR":  EntryInfor.atar,
+            "GPA":   EntryInfor.gpa,
         }
         all_tests = list(english_tests or []) + list(academic_tests or [])
         for test_name in all_tests:
-            col = TEST_COLUMN_MAP.get(test_name)
-            if col:
-                where_clauses.append(
-                    f"EXISTS (SELECT 1 FROM entry_infor ei "
-                    f"WHERE ei.university_id = u.id AND ei.`{col}` IS NOT NULL)"
+            col = TEST_ATTR_MAP.get(test_name)
+            if col is not None:
+                query = query.filter(
+                    University.entry_infors.any(col.isnot(None))
                 )
 
+        # Detail info filters
         if min_international_pct is not None and min_international_pct > 0:
-            where_clauses.append(
-                "EXISTS (SELECT 1 FROM detail_infors di "
-                "WHERE di.university_id = u.id "
-                "AND CAST(REPLACE(REPLACE(di.international, '%', ''), ' ', '') AS DECIMAL(5,2)) >= :min_intl_pct)"
+            # Cast the stored string (e.g. "45%") to a number for comparison
+            query = query.filter(
+                University.detail_infor.has(
+                    cast(
+                        func.replace(func.replace(DetailInfor.international, "%", ""), " ", ""),
+                        Numeric(5, 2),
+                    ) >= min_international_pct
+                )
             )
-            params["min_intl_pct"] = min_international_pct
 
         if fee_min is not None:
-            where_clauses.append(
-                "EXISTS (SELECT 1 FROM detail_infors di WHERE di.university_id = u.id AND di.fee >= :fee_min)"
+            query = query.filter(
+                University.detail_infor.has(DetailInfor.fee >= str(fee_min))
             )
-            params["fee_min"] = fee_min
-
         if fee_max is not None:
-            where_clauses.append(
-                "EXISTS (SELECT 1 FROM detail_infors di WHERE di.university_id = u.id AND di.fee <= :fee_max)"
+            query = query.filter(
+                University.detail_infor.has(DetailInfor.fee <= str(fee_max))
             )
-            params["fee_max"] = fee_max
 
         if scholarship == "yes":
-            where_clauses.append(
-                "EXISTS (SELECT 1 FROM detail_infors di WHERE di.university_id = u.id AND di.scholarship = 1)"
+            query = query.filter(
+                University.detail_infor.has(DetailInfor.scholarship == True)
             )
         elif scholarship == "no":
-            where_clauses.append(
-                "EXISTS (SELECT 1 FROM detail_infors di WHERE di.university_id = u.id AND di.scholarship = 0)"
+            query = query.filter(
+                University.detail_infor.has(DetailInfor.scholarship == False)
             )
 
-        where_sql = " AND ".join(where_clauses)
-
-        sql = text(f"""
-            SELECT {_SCORE_JOIN_SELECT}
-            FROM (
-                SELECT u.id, u.rank_int, u.overall_score, u.name, u.city, u.country_id, u.path, u.logo
-                FROM universities u
-                LEFT JOIN countries c ON u.country_id = c.id
-                WHERE {where_sql}
-                ORDER BY u.rank_int ASC, u.id ASC
-                LIMIT 2000
-            ) u
-            {_SCORE_JOINS}
-            ORDER BY u.rank_int ASC, u.id ASC
-        """)
-
-        rows = db.execute(sql, params).mappings().all()
-        return [u.to_dict() for u in _build_uni_map(rows).values()]
+        unis = (
+            query
+            .order_by(University.rank_int.asc(), University.id.asc())
+            .limit(2000)
+            .all()
+        )
+        return [_uni_to_dict(u) for u in unis]
 
 
     @staticmethod
     def get_university_by_id(db: Session, university_id: int) -> Optional[Dict[str, Any]]:
-        sql = text(f"""
-            SELECT {_SCORE_JOIN_SELECT}
-            FROM (
-                SELECT id, rank_int, overall_score, name, city, country_id, path, logo
-                FROM universities WHERE id = :uni_id
-            ) u
-            {_SCORE_JOINS}
-        """)
-        rows = db.execute(sql, {"uni_id": university_id}).mappings().all()
-        uni_map = _build_uni_map(rows)
-        if not uni_map:
-            return None
-        uni = uni_map[university_id]
-        return uni.to_dict()
+        uni = (
+            db.query(University)
+            .options(*_eager_opts())
+            .filter(University.id == university_id)
+            .first()
+        )
+        return _uni_to_dict(uni) if uni else None
 
     @staticmethod
     def get_scholarships(db: Session, university_id: int) -> List[Dict[str, Any]]:
@@ -262,152 +230,99 @@ class UniversityModel:
 
     @staticmethod
     def get_entry_requirements(db: Session, university_id: int, degree_type: int = None) -> Optional[Dict[str, Any]]:
-        sql = text("""
-            SELECT
-                u.name    AS uni_name,
-                u.rank_int AS uni_rank,
-                e.degree_type,
-                e.SAT  AS sat,
-                e.GRE  AS gre,
-                e.GMAT AS gmat,
-                e.ACT  AS act,
-                e.ATAR AS atar,
-                e.GPA  AS gpa,
-                e.TOEFL AS toefl,
-                e.IELTS AS ielts
-            FROM universities u
-            LEFT JOIN entry_infor e ON u.id = e.university_id
-            WHERE u.id = :uni_id
-        """)
-        results = db.execute(sql, {"uni_id": university_id}).mappings().all()
-
-        if not results:
+        uni = db.query(University).filter(University.id == university_id).first()
+        if not uni:
             return None
 
-        first = dict(results[0])
+        entry_rows = (
+            db.query(EntryInfor)
+            .filter(EntryInfor.university_id == university_id)
+            .all()
+        )
+
         out: Dict[str, Any] = {
-            "name": first["uni_name"],
-            "rank": first["uni_rank"],
+            "name": uni.name,
+            "rank": uni.rank_int,
             "bachelor": None,
             "master": None,
         }
 
-        for row in results:
-            row = dict(row)
-            degree_type = row.get("degree_type")
-            if degree_type is None:
-                continue
+        for ei in entry_rows:
             req_data = {
-                "sat":  UniversityModel._parse_score(row.get("sat")),
-                "gre":  UniversityModel._parse_score(row.get("gre")),
-                "gmat": UniversityModel._parse_score(row.get("gmat")),
-                "act":  UniversityModel._parse_score(row.get("act")),
-                "atar": UniversityModel._parse_score(row.get("atar")),
-                "gpa":  UniversityModel._parse_score(row.get("gpa")),
-                "toefl": UniversityModel._parse_score(row.get("toefl")),
-                "ielts": UniversityModel._parse_score(row.get("ielts")),
+                "sat":   UniversityModel._parse_score(ei.sat),
+                "gre":   UniversityModel._parse_score(ei.gre),
+                "gmat":  UniversityModel._parse_score(ei.gmat),
+                "act":   UniversityModel._parse_score(ei.act),
+                "atar":  UniversityModel._parse_score(ei.atar),
+                "gpa":   UniversityModel._parse_score(ei.gpa),
+                "toefl": UniversityModel._parse_score(ei.toefl),
+                "ielts": UniversityModel._parse_score(ei.ielts),
             }
-            if degree_type == 1:
+            if ei.degree_type == EntryInfor.DEGREE_BACHELOR:
                 out["bachelor"] = req_data
-            elif degree_type == 2:
+            elif ei.degree_type == EntryInfor.DEGREE_MASTER:
                 out["master"] = req_data
 
         return out
 
     @staticmethod
     def get_detail_information(db: Session, university_id: int) -> Optional[Dict[str, Any]]:
-        sql = text("""
-            SELECT
-                u.name,
-                COALESCE(d.fee, \'\')           AS fee,
-                COALESCE(d.scholarship, 0)         AS scholarship,
-                COALESCE(d.domestic, \'\')       AS domestic,
-                COALESCE(d.international, \'\')  AS international,
-                COALESCE(d.total_stu, \'\')      AS total_stu,
-                COALESCE(d.ug_rate, \'\')        AS ug_rate,
-                COALESCE(d.pg_rate, \'\')        AS pg_rate,
-                COALESCE(d.inter_total, \'\')    AS inter_total,
-                COALESCE(d.inter_ug_rate, \'\')  AS inter_ug_rate,
-                COALESCE(d.inter_pg_rate, \'\')  AS inter_pg_rate
-            FROM universities u
-            LEFT JOIN detail_infors d ON u.id = d.university_id
-            WHERE u.id = :uni_id
-        """)
-        row = db.execute(sql, {"uni_id": university_id}).mappings().first()
-        if not row:
+        uni = db.query(University).filter(University.id == university_id).first()
+        if not uni:
             return None
-        return DetailInfor.from_dict(dict(row)).to_dict()
+        di = (
+            db.query(DetailInfor)
+            .filter(DetailInfor.university_id == university_id)
+            .first()
+        )
+        if not di:
+            # Return empty detail for this university
+            di = DetailInfor(university_id=university_id)
+        return di.to_dict()
 
     @staticmethod
     def get_comparison_data(db: Session, university_ids: List[int]) -> List[Dict[str, Any]]:
         if not university_ids:
             return []
-        placeholders = ", ".join(f":id_{i}" for i in range(len(university_ids)))
-        params = {f"id_{i}": uid for i, uid in enumerate(university_ids)}
-        sql = text(f"""
-            SELECT
-                u.id,
-                u.name,
-                COALESCE(d.fee, \'\')          AS fee,
-                COALESCE(d.scholarship, 0)        AS scholarship,
-                COALESCE(d.domestic, \'\')      AS domestic,
-                COALESCE(d.international, \'\') AS international,
-                COALESCE(d.total_stu, \'\')     AS total_stu,
-                COALESCE(d.ug_rate, \'\')       AS ug_rate,
-                COALESCE(d.pg_rate, \'\')       AS pg_rate,
-                COALESCE(d.inter_total, \'\')   AS inter_total,
-                COALESCE(d.inter_ug_rate, \'\') AS inter_ug_rate,
-                COALESCE(d.inter_pg_rate, \'\') AS inter_pg_rate
-            FROM universities u
-            LEFT JOIN detail_infors d ON u.id = d.university_id
-            WHERE u.id IN ({placeholders})
-        """)
-        rows = db.execute(sql, params).mappings().all()
+        unis = (
+            db.query(University)
+            .options(joinedload(University.detail_infor))
+            .filter(University.id.in_(university_ids))
+            .all()
+        )
         result = []
-        for r in rows:
-            row_dict = dict(r)
-            detail = DetailInfor.from_dict(row_dict).to_dict()
-            detail['id'] = row_dict.get('id')
-            detail['name'] = row_dict.get('name')
-            result.append(detail)
+        for uni in unis:
+            di = uni.detail_infor or DetailInfor(university_id=uni.id)
+            row = di.to_dict()
+            row["id"] = uni.id
+            row["name"] = uni.name
+            result.append(row)
         return result
 
     @staticmethod
     def get_chart_data(db: Session, university_ids: List[int]) -> List[Dict[str, Any]]:
         if not university_ids:
             return []
-        placeholders = ", ".join(f":id_{i}" for i in range(len(university_ids)))
-        params = {f"id_{i}": uid for i, uid in enumerate(university_ids)}
-        sql = text(f"""
-            SELECT
-                u.id, u.name, e.degree_type,
-                e.SAT  AS sat,  e.GRE  AS gre,  e.GMAT AS gmat,
-                e.ACT  AS act,  e.ATAR AS atar,  e.GPA  AS gpa,
-                e.TOEFL AS toefl, e.IELTS AS ielts
-            FROM universities u
-            LEFT JOIN entry_infor e ON u.id = e.university_id
-            WHERE u.id IN ({placeholders})
-            ORDER BY u.id, e.degree_type
-        """)
-        rows = db.execute(sql, params).mappings().all()
+        unis = (
+            db.query(University)
+            .options(joinedload(University.entry_infors))
+            .filter(University.id.in_(university_ids))
+            .all()
+        )
 
-        def _row_scores(row):
-            return {
-                k: UniversityModel._parse_score(row.get(k))
-                for k in ("sat", "gre", "gmat", "act", "atar", "gpa", "toefl", "ielts")
-            }
+        def _ei_scores(ei: EntryInfor) -> Dict[str, Optional[float]]:
+            return {k: UniversityModel._parse_score(getattr(ei, k)) for k in
+                    ("sat", "gre", "gmat", "act", "atar", "gpa", "toefl", "ielts")}
 
         uni_map: Dict[int, Dict] = {}
-        for row in rows:
-            row = dict(row)
-            uid = row["id"]
-            if uid not in uni_map:
-                uni_map[uid] = {"id": uid, "name": row["name"], "bachelor": None, "master": None}
-            dt = row.get("degree_type")
-            if dt == 1:
-                uni_map[uid]["bachelor"] = _row_scores(row)
-            elif dt == 2:
-                uni_map[uid]["master"] = _row_scores(row)
+        for uni in unis:
+            entry = {"id": uni.id, "name": uni.name, "bachelor": None, "master": None}
+            for ei in uni.entry_infors:
+                if ei.degree_type == EntryInfor.DEGREE_BACHELOR:
+                    entry["bachelor"] = _ei_scores(ei)
+                elif ei.degree_type == EntryInfor.DEGREE_MASTER:
+                    entry["master"] = _ei_scores(ei)
+            uni_map[uni.id] = entry
 
         return [uni_map[uid] for uid in university_ids if uid in uni_map]
 
@@ -505,20 +420,20 @@ class UniversityModel:
     def get_edit_data(db: Session, university_id: int) -> dict:
         """Return entry_requirements + edit_scores in the format expected by the edit form."""
         # Entry requirements — all degree types
-        entry_sql = text("""
-            SELECT degree_type, SAT, ACT, GRE, GMAT, ATAR, GPA, TOEFL, IELTS
-            FROM entry_infor WHERE university_id = :uid
-        """)
-        entry_rows = db.execute(entry_sql, {"uid": university_id}).mappings().all()
+        entry_rows = (
+            db.query(EntryInfor)
+            .filter(EntryInfor.university_id == university_id)
+            .all()
+        )
         entry_requirements = [
             {
-                "degree_type": r["degree_type"],
-                "SAT":  r["SAT"],  "ACT":  r["ACT"],
-                "GRE":  r["GRE"],  "GMAT": r["GMAT"],
-                "ATAR": r["ATAR"], "GPA":  r["GPA"],
-                "TOEFL": r["TOEFL"], "IELTS": r["IELTS"],
+                "degree_type": ei.degree_type,
+                "SAT":  ei.sat,   "ACT":  ei.act,
+                "GRE":  ei.gre,   "GMAT": ei.gmat,
+                "ATAR": ei.atar,  "GPA":  ei.gpa,
+                "TOEFL": ei.toefl, "IELTS": ei.ielts,
             }
-            for r in entry_rows
+            for ei in entry_rows
         ]
 
         # Scores — reverse-map indicator_id → (cat_key, ind_key)
@@ -535,23 +450,22 @@ class UniversityModel:
             "intl_student_diversity": "global_engagement",
             "sustainability_score":   "sustainability",
         }
-        score_sql = text("""
-            SELECT indicator_id, score, rank_int
-            FROM scores WHERE university_id = :uid
-        """)
-        score_rows = db.execute(score_sql, {"uid": university_id}).mappings().all()
+        score_rows = (
+            db.query(Score)
+            .filter(Score.university_id == university_id)
+            .all()
+        )
         edit_scores: Dict[str, Any] = {}
-        for row in score_rows:
-            ind_id  = row["indicator_id"]
-            ind_key = reverse_map.get(ind_id)
+        for sc in score_rows:
+            ind_key = reverse_map.get(sc.indicator_id)
             if not ind_key:
                 continue
             cat_key = cat_map.get(ind_key)
             if not cat_key:
                 continue
             edit_scores.setdefault(cat_key, {})[ind_key] = {
-                "score": row["score"],
-                "rank":  row["rank_int"],
+                "score": sc.score,
+                "rank":  sc.rank_int,
             }
 
         return {"entry_requirements": entry_requirements, "edit_scores": edit_scores}
@@ -559,31 +473,26 @@ class UniversityModel:
     @staticmethod
     def get_ranking_scores(db: Session, university_id: int) -> List[Dict[str, Any]]:
         """Return ranking scores grouped by score_type category, each with indicator name, score, rank_int."""
-        sql = text("""
-            SELECT
-                st.name  AS category,
-                i.name   AS indicator,
-                s.score,
-                s.rank_int
-            FROM scores s
-            JOIN indicators  i  ON i.id  = s.indicator_id
-            JOIN score_types st ON st.id = i.score_type_id
-            WHERE s.university_id = :uid
-            ORDER BY st.id ASC, i.id ASC
-        """)
-        rows = db.execute(sql, {"uid": university_id}).mappings().all()
+        rows = (
+            db.query(Score, Indicator, ScoreType)
+            .join(Indicator, Score.indicator_id == Indicator.id)
+            .join(ScoreType, Indicator.score_type_id == ScoreType.id)
+            .filter(Score.university_id == university_id)
+            .order_by(ScoreType.id.asc(), Indicator.id.asc())
+            .all()
+        )
 
         categories: Dict[str, list] = {}
         cat_order: List[str] = []
-        for row in rows:
-            cat = row["category"]
+        for sc, ind, st in rows:
+            cat = st.name
             if cat not in categories:
                 categories[cat] = []
                 cat_order.append(cat)
             categories[cat].append({
-                "name":  row["indicator"],
-                "score": row["score"],
-                "rank":  row["rank_int"],
+                "name":  ind.name,
+                "score": sc.score,
+                "rank":  sc.rank_int,
             })
 
         return [{"category": cat, "indicators": categories[cat]} for cat in cat_order]
@@ -662,3 +571,4 @@ class UniversityModel:
         db.delete(uni)
         db.commit()
         return True
+ 

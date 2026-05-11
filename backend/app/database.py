@@ -37,10 +37,12 @@ def get_db() -> Generator[Session, None, None]:
         db.close()
 
 
-# ── Legacy helpers (kept for chatbot_engine.py backward compat) ───────────────
+# ── Text-to-SQL helpers (used by chatbot engine only) ─────────────────────────
+# These helpers execute AI-generated SELECT queries for the chatbot text-to-SQL
+# feature. All CRUD operations in routers/models use the SQLAlchemy session above.
 
 def get_db_connection():
-    """Create and return a raw mysql.connector connection."""
+    """Create and return a raw mysql.connector connection (chatbot text-to-SQL only)."""
     try:
         connection = mysql.connector.connect(
             host=settings.DATABASE_HOST,
@@ -57,12 +59,13 @@ def get_db_connection():
 def execute_query(query, params=None, fetch=False, fetch_one=False):
     """
     Execute a raw SQL query via mysql.connector.
-    Kept for backward compatibility with chatbot_engine and other legacy callers.
+    Used exclusively by chatbot_engine for AI-generated text-to-SQL SELECT queries.
     """
     connection = get_db_connection()
     cursor = connection.cursor(dictionary=True)
 
     try:
+        cursor.execute("SET SESSION sql_mode = ''")
         cursor.execute(query, params or ())
 
         if fetch:
@@ -74,3 +77,4 @@ def execute_query(query, params=None, fetch=False, fetch_one=False):
     finally:
         cursor.close()
         connection.close()
+ 

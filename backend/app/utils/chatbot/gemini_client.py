@@ -1,9 +1,8 @@
 """
-GeminiClient — Handles all Gemini API calls with retry and model fallback.
+GeminiClient � Tiered AI API client with automatic fallback.
 
-Call order:
-  1. PRIMARY  — gemini-3-flash-preview via wokushop (GEMINI_KEY_PRO)
-  2. FALLBACK — Google API key (gemini-2.5-flash → 2.0-flash → 2.0-flash-lite)
+Endpoint URLs and internal model names are configured via .env � never hardcoded here.
+The public-facing model name shown to users is always controlled by PRIMARY_MODEL in .env.
 """
 
 from __future__ import annotations
@@ -11,108 +10,121 @@ from __future__ import annotations
 import time
 from typing import Generator, Optional
 
-_WOKUSHOP_BASE_URL = "https://llm.wokushop.com/v1"
-_PRO_MODEL = "gemini-2.5-flash"
-
 
 class GeminiClient:
-    """Gemini API client with retry, model fallback, and pro endpoint fallback."""
 
-    MODEL_FALLBACK_ORDER = [
+    _GOOGLE_MODEL_ORDER = [
         "models/gemini-2.5-flash",
         "models/gemini-2.0-flash",
         "models/gemini-2.0-flash-lite",
     ]
 
-    def __init__(self, api_key: str, pro_key: str = ""):
-        self._client = None
-        self._model_name: Optional[str] = None
-        self._ready = False
+    def __init__(
+        self,
+        primary_key: str = "",
+        primary_base: str = "",
+        primary_model: str = "",
+        wokushop_key: str = "",
+        wokushop_base: str = "",
+        wokushop_model: str = "",
+        google_key: str = "",
+    ):
         self._rate_limited = False
 
-        # OpenAI-compatible pro client (wokushop)
-        self._pro_client = None
-        self._pro_ready = False
-        if pro_key:
-            self._init_pro(pro_key)
 
-        if api_key:
-            self._init(api_key)
+        self._primary_client = None
+        self._primary_model = primary_model
+        self._primary_ready = False
+        if primary_key and primary_base:
+            self._init_openai_compat(
+                key=primary_key, base=primary_base,
+                client_attr="_primary_client", ready_attr="_primary_ready",
+                label="primary",
+            )
+
+        self._wokushop_client = None
+        self._wokushop_model = wokushop_model
+        self._wokushop_ready = False
+        if wokushop_key and wokushop_base:
+            self._init_openai_compat(
+                key=wokushop_key, base=wokushop_base,
+                client_attr="_wokushop_client", ready_attr="_wokushop_ready",
+                label="wokushop",
+            )
+
+        self._google_client = None
+        self._google_model = self._GOOGLE_MODEL_ORDER[0]
+        self._google_ready = False
+        if google_key:
+            self._init_google(google_key)
+
+    # Properties
 
     @property
     def is_ready(self) -> bool:
-        return self._ready or self._pro_ready
+        return self._primary_ready or self._wokushop_ready or self._google_ready
 
     @property
     def is_rate_limited(self) -> bool:
         return self._rate_limited
 
-    def _init_pro(self, pro_key: str) -> None:
+    # Initialisation helpers
+
+    def _init_openai_compat(self, key: str, base: str, client_attr: str, ready_attr: str, label: str) -> None:
         try:
             from openai import OpenAI
-            self._pro_client = OpenAI(api_key=pro_key, base_url=_WOKUSHOP_BASE_URL)
-            self._pro_ready = True
-            print(f"[GeminiClient] Pro primary ready (model={_PRO_MODEL}, endpoint=wokushop).")
+            setattr(self, client_attr, OpenAI(api_key=key, base_url=base))
+            setattr(self, ready_attr, True)
+            print(f"[GeminiClient] {label} ready.")
         except Exception as exc:
-            print(f"[GeminiClient] Pro init failed: {exc}")
-            self._pro_ready = False
+            print(f"[GeminiClient] {label} init failed: {exc}")
+            setattr(self, ready_attr, False)
 
-    def _init(self, api_key: str) -> None:
+    def _init_google(self, api_key: str) -> None:
         try:
             from google import genai
-            self._client = genai.Client(api_key=api_key)
-            self._model_name = self.MODEL_FALLBACK_ORDER[0]
-            self._ready = True
-            print(f"[GeminiClient] Ready (model={self._model_name}).")
+            self._google_client = genai.Client(api_key=api_key)
+            self._google_ready = True
+            print("[GeminiClient] Google genAI ready.")
         except Exception as exc:
-            print(f"[GeminiClient] Init failed: {exc}")
-            self._ready = False
+            print(f"[GeminiClient] Google genAI init failed: {exc}")
+            self._google_ready = False
+
+    # Non-streaming call
 
     def call(self, prompt: str, temperature: float = 0.2, max_tokens: int = 2048) -> Optional[str]:
-        """
-        Non-streaming call. Tries pro (wokushop) first, then Google API fallback.
-        """
-        # 1. PRIMARY: wokushop pro key
-        if self._pro_ready:
-            result = self._call_pro(prompt, temperature, max_tokens)
+        """Sync call. Tries primary -> wokushop -> Google genAI."""
+        if self._primary_ready:
+            result = self._call_openai_compat(
+                self._primary_client, self._primary_model,
+                prompt, temperature, max_tokens, "primary",
+            )
             if result is not None:
                 return result
-            print("[GeminiClient] Pro failed, switching to Google API fallback.")
+            print("[GeminiClient] Primary failed, trying wokushop.")
 
-        # 2. FALLBACK: Google API
-        if not self._ready:
-            return None
-        from google.genai import types
+        if self._wokushop_ready:
+            result = self._call_openai_compat(
+                self._wokushop_client, self._wokushop_model,
+                prompt, temperature, max_tokens, "wokushop",
+            )
+            if result is not None:
+                return result
+            print("[GeminiClient] Wokushop failed, trying Google genAI.")
 
-        start_idx = self._get_start_index()
+        if self._google_ready:
+            return self._call_google(prompt, temperature, max_tokens)
 
-        for model in self.MODEL_FALLBACK_ORDER[start_idx:]:
-            for attempt in range(3):
-                try:
-                    resp = self._client.models.generate_content(
-                        model=model,
-                        contents=prompt,
-                        config=types.GenerateContentConfig(
-                            temperature=temperature,
-                            max_output_tokens=max_tokens,
-                        ),
-                    )
-                    self._on_success(model)
-                    return resp.text
-                except Exception as exc:
-                    if not self._handle_error(exc, model, attempt):
-                        break  # try next model
-
-        self._rate_limited = True
-        print("[GeminiClient] All models exhausted (quota or error).")
+        print("[GeminiClient] All tiers exhausted.")
         return None
 
-    def _call_pro(self, prompt: str, temperature: float, max_tokens: int) -> Optional[str]:
-        """Non-streaming call via wokushop OpenAI-compatible endpoint."""
+    def _call_openai_compat(
+        self, client, model: str,
+        prompt: str, temperature: float, max_tokens: int, label: str,
+    ) -> Optional[str]:
         try:
-            print(f"[GeminiClient] Calling pro endpoint (model={_PRO_MODEL}).")
-            resp = self._pro_client.chat.completions.create(
-                model=_PRO_MODEL,
+            resp = client.chat.completions.create(
+                model=model,
                 messages=[{"role": "user", "content": prompt}],
                 temperature=temperature,
                 max_tokens=max_tokens,
@@ -120,40 +132,20 @@ class GeminiClient:
             choice = resp.choices[0]
             content = choice.message.content
             if not content:
-                finish_reason = getattr(choice, "finish_reason", "unknown")
-                print(f"[GeminiClient] Pro returned empty content (finish_reason={finish_reason}).")
+                print(f"[GeminiClient] {label} returned empty content.")
                 return None
             return content
         except Exception as exc:
-            print(f"[GeminiClient] Pro endpoint error: {exc}")
+            print(f"[GeminiClient] {label} error: {exc}")
             return None
 
-    def stream(self, prompt: str, temperature: float = 0.3, max_tokens: int = 3000) -> Generator[str, None, None]:
-        """
-        Streaming call. Tries pro (wokushop) first, then Google API fallback.
-        """
-        # 1. PRIMARY: wokushop pro key
-        if self._pro_ready:
-            try:
-                chunks = list(self._stream_pro(prompt, temperature, max_tokens))
-                if chunks:
-                    yield from chunks
-                    return
-            except Exception as exc:
-                print(f"[GeminiClient] Pro streaming failed ({exc}), switching to Google API fallback.")
-
-        # 2. FALLBACK: Google API
-        if not self._ready:
-            yield "⚠️ Gemini API is not configured. Please set GEMINI_KEY or GEMINI_KEY_PRO in .env"
-            return
+    def _call_google(self, prompt: str, temperature: float, max_tokens: int) -> Optional[str]:
         from google.genai import types
-
-        start_idx = self._get_start_index()
-
-        for model in self.MODEL_FALLBACK_ORDER[start_idx:]:
+        start_idx = self._get_google_start_index()
+        for model in self._GOOGLE_MODEL_ORDER[start_idx:]:
             for attempt in range(3):
                 try:
-                    response_stream = self._client.models.generate_content_stream(
+                    resp = self._google_client.models.generate_content(
                         model=model,
                         contents=prompt,
                         config=types.GenerateContentConfig(
@@ -161,66 +153,113 @@ class GeminiClient:
                             max_output_tokens=max_tokens,
                         ),
                     )
-                    self._on_success(model)
+                    self._google_model = model
+                    self._rate_limited = False
+                    return resp.text
+                except Exception as exc:
+                    if not self._handle_error(exc, model, attempt):
+                        break
+        self._rate_limited = True
+        print("[GeminiClient] All Google models exhausted.")
+        return None
+
+    # Streaming call
+
+    def stream(self, prompt: str, temperature: float = 0.3, max_tokens: int = 3000) -> Generator[str, None, None]:
+        """Streaming call. Tries primary -> wokushop -> Google genAI."""
+        if self._primary_ready:
+            try:
+                chunks = list(self._stream_openai_compat(
+                    self._primary_client, self._primary_model,
+                    prompt, temperature, max_tokens,
+                ))
+                if chunks:
+                    yield from chunks
+                    return
+            except Exception as exc:
+                print(f"[GeminiClient] Primary streaming failed ({exc}), trying wokushop.")
+
+        if self._wokushop_ready:
+            try:
+                chunks = list(self._stream_openai_compat(
+                    self._wokushop_client, self._wokushop_model,
+                    prompt, temperature, max_tokens,
+                ))
+                if chunks:
+                    yield from chunks
+                    return
+            except Exception as exc:
+                print(f"[GeminiClient] Wokushop streaming failed ({exc}), trying Google genAI.")
+
+        if self._google_ready:
+            yield from self._stream_google(prompt, temperature, max_tokens)
+            return
+
+        yield "AI service is not configured. Please set API keys in .env"
+
+    def _stream_openai_compat(
+        self, client, model: str,
+        prompt: str, temperature: float, max_tokens: int,
+    ) -> Generator[str, None, None]:
+        stream = client.chat.completions.create(
+            model=model,
+            messages=[{"role": "user", "content": prompt}],
+            temperature=temperature,
+            max_tokens=max_tokens,
+            stream=True,
+        )
+        for chunk in stream:
+            if not chunk.choices:
+                continue
+            delta = chunk.choices[0].delta.content
+            if delta:
+                yield delta
+
+    def _stream_google(self, prompt: str, temperature: float, max_tokens: int) -> Generator[str, None, None]:
+        from google.genai import types
+        start_idx = self._get_google_start_index()
+        for model in self._GOOGLE_MODEL_ORDER[start_idx:]:
+            for attempt in range(3):
+                try:
+                    response_stream = self._google_client.models.generate_content_stream(
+                        model=model,
+                        contents=prompt,
+                        config=types.GenerateContentConfig(
+                            temperature=temperature,
+                            max_output_tokens=max_tokens,
+                        ),
+                    )
+                    self._google_model = model
+                    self._rate_limited = False
                     for chunk in response_stream:
                         if chunk.text:
                             yield chunk.text
-                    return  # success
+                    return
                 except Exception as exc:
                     if not self._handle_error(exc, model, attempt):
-                        break  # try next model
-
+                        break
         self._rate_limited = True
-        print("[GeminiClient] All models exhausted (quota or error).")
-        yield "\n⚠️ The AI service is temporarily unavailable. Please try again in a few minutes."
+        yield "\n The AI service is temporarily unavailable. Please try again in a few minutes."
 
-    def _stream_pro(self, prompt: str, temperature: float, max_tokens: int) -> Generator[str, None, None]:
-        """Streaming call via wokushop OpenAI-compatible endpoint."""
-        try:
-            print(f"[GeminiClient] Calling pro endpoint streaming (model={_PRO_MODEL}).")
-            stream = self._pro_client.chat.completions.create(
-                model=_PRO_MODEL,
-                messages=[{"role": "user", "content": prompt}],
-                temperature=temperature,
-                max_tokens=max_tokens,
-                stream=True,
-            )
-            for chunk in stream:
-                if not chunk.choices:
-                    continue
-                delta = chunk.choices[0].delta.content
-                if delta:
-                    yield delta
-        except Exception as exc:
-            print(f"[GeminiClient] Pro endpoint streaming error: {exc}")
-            raise
+    # Helpers
 
-    def _get_start_index(self) -> int:
+    def _get_google_start_index(self) -> int:
         try:
-            return self.MODEL_FALLBACK_ORDER.index(self._model_name)
+            return self._GOOGLE_MODEL_ORDER.index(self._google_model)
         except ValueError:
             return 0
 
-    def _on_success(self, model: str) -> None:
-        if model != self._model_name:
-            print(f"[GeminiClient] Switched to fallback model: {model}")
-            self._model_name = model
-        self._rate_limited = False
-
     def _handle_error(self, exc: Exception, model: str, attempt: int) -> bool:
-        """
-        Handle API errors. Returns True if should retry same model, False to try next.
-        """
+        """Returns True to retry same model, False to try next model."""
         exc_str = str(exc)
-        if '503' in exc_str or 'UNAVAILABLE' in exc_str.upper():
+        if "503" in exc_str or "UNAVAILABLE" in exc_str.upper():
             wait = 2 ** attempt
-            print(f"[GeminiClient] 503 on {model} — retry in {wait}s (attempt {attempt + 1}/3)")
+            print(f"[GeminiClient] 503 on {model} - retry in {wait}s (attempt {attempt + 1}/3)")
             time.sleep(wait)
-            return True  # retry same model
-        elif '429' in exc_str or 'RESOURCE_EXHAUSTED' in exc_str.upper():
-            print(f"[GeminiClient] 429 quota exceeded on {model} — trying next model")
-            return False  # try next model
+            return True
+        elif "429" in exc_str or "RESOURCE_EXHAUSTED" in exc_str.upper():
+            print(f"[GeminiClient] 429 quota on {model} - trying next")
+            return False
         else:
             print(f"[GeminiClient] Error on {model}: {exc}")
-            return False  # try next model
- 
+            return False

@@ -57,7 +57,9 @@
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
-const userAvatarImg = '/assets/user-avatar.webp'
+
+const DEFAULT_AVATAR = '/assets/user-avatar.webp'
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
 const props = defineProps({
   adminMode: { type: Boolean, default: false }
@@ -69,6 +71,11 @@ const authStore = useAuthStore()
 const isAuthenticated = computed(() => authStore.isAuthenticated)
 const isAdmin = computed(() => authStore.isAdmin)
 const userName = computed(() => authStore.user?.first_name || 'Profile')
+const userAvatarImg = computed(() => {
+  const img = authStore.user?.image
+  if (!img) return DEFAULT_AVATAR
+  return img.startsWith('http') ? img : API_BASE + img
+})
 
 const logout = async () => {
   await authStore.logout()

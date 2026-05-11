@@ -66,6 +66,9 @@ class IntentRouter:
         r'\bno ielts\b', r'\bno english\b',
         r'\blow gpa\b',
         r'\bfor me\b',
+        r'\brecommend\b.*\bmy\b', r'\bmy\b.*\brecommend\b',
+        r'\bbased on my\b',
+        r'\bmy scores?\b', r'\bmy gpa\b', r'\bmy ielts\b',
     ]
 
     def classify(self, text: str, history: Optional[List[Dict]] = None) -> Tuple[str, str]:
@@ -86,15 +89,18 @@ class IntentRouter:
 
         # 1. Check compare patterns first (high priority)
         if self._matches_patterns(tl, self._COMPARE_PATTERNS):
+            print(f"[Router] COMPARE pattern matched for: {tl[:60]!r}")
             return ("DOMAIN", "COMPARE")
 
         # 2. Check profile/eligibility patterns
         if self._matches_patterns(tl, self._PROFILE_PATTERNS):
+            print(f"[Router] PROFILE_MATCH pattern matched for: {tl[:60]!r}")
             return ("DOMAIN", "PROFILE_MATCH")
 
         # 3. Check explicit domain keywords
         if self._has_domain_keywords(tl):
             sub = self._detect_sub_intent(tl, history)
+            print(f"[Router] DOMAIN keyword matched, sub_intent={sub} for: {tl[:60]!r}")
             return ("DOMAIN", sub)
 
         # 4. Check follow-up patterns (needs history context)

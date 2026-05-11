@@ -491,8 +491,7 @@ const loadProfile = async () => {
     profileForm.is_special = !!user.special
     if (user.image) avatarPreview.value = user.image
   } catch (err) {
-    const detail = err.response?.data?.detail || 'Cannot connect to the database. Please try again later.'
-    message.error(detail)
+    console.error('Failed to load profile', err)
   }
 }
 
@@ -534,9 +533,9 @@ const loadStudyBg = async () => {
     studyForm.pearson = bg.pearsonTest
     studyForm.cambridge = bg.camAdvTest
   } catch (err) {
-    if (err.response?.status === 404) return
-    const detail = err.response?.data?.detail || 'Cannot connect to the database. Please try again later.'
-    message.error(detail)
+    if (err.response?.status !== 404) {
+      console.error('Failed to load study background', err)
+    }
   }
 }
 

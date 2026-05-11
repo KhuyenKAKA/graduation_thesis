@@ -20,16 +20,16 @@
           <div class="footer-social">
             <span>Follow us</span>
             <div class="social-icons">
-              <a href="#" class="social-icon" title="Facebook">
+              <a href="https://www.topuniversities.com/" target="_blank" rel="noopener noreferrer" class="social-icon" title="Facebook">
                 <img src="/assets/facebook-icon.png" alt="Facebook" />
               </a>
-              <a href="#" class="social-icon" title="Twitter">
+              <a href="https://www.topuniversities.com/" target="_blank" rel="noopener noreferrer" class="social-icon" title="Twitter">
                 <img src="/assets/twitter-icon.png" alt="Twitter/X" />
               </a>
-              <a href="#" class="social-icon" title="LinkedIn">
+              <a href="https://www.topuniversities.com/" target="_blank" rel="noopener noreferrer" class="social-icon" title="LinkedIn">
                 <img src="/assets/linkedin-icon.png" alt="LinkedIn" />
               </a>
-              <a href="#" class="social-icon" title="Instagram">
+              <a href="https://www.topuniversities.com/" target="_blank" rel="noopener noreferrer" class="social-icon" title="Instagram">
                 <img src="/assets/instagram-icon.png" alt="Instagram" />
               </a>
             </div>

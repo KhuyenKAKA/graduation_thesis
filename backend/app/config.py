@@ -29,15 +29,17 @@ class Settings(BaseSettings):
 
     # Gemini AI (for chatbot)
     GEMINI_KEY: str = ""
-
-    # Gemini Pro via wokushop OpenAI-compatible endpoint (ultimate fallback)
     GEMINI_KEY_PRO: str = ""
+    GOOGLE_GENAI_KEY: str = ""
+
+    # Chatbot endpoint / model config
+    PRIMARY_API_BASE: str = ""
+    PRIMARY_MODEL: str = ""
+    WOKUSHOP_BASE: str = ""
+    WOKUSHOP_MODEL: str = ""
 
     # Tavily (online search fallback when DB data is insufficient)
     TAVILY_API_KEY: str = ""
-
-    # OpenRouter fallback (OpenAI-compatible, used when Gemini quota exhausted)
-    OPENROUTER_API_KEY: str = ""
 
     # Email Configuration (Gmail SMTP)
     GMAIL_SENDER_EMAIL: str = "your-email@gmail.com"

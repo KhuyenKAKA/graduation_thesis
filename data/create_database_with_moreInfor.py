@@ -1,19 +1,17 @@
 import mysql.connector
 import json
-import requests
+import cloudscraper
 from bs4 import BeautifulSoup
 import time
 
-# ==========================
-# 1️⃣ Kết nối tới MySQL
-# ==========================
+
 conn = mysql.connector.connect(
     host="localhost",
     user="root",
     password="@Khuyen2903",
     database="universities_db"
 )
-
+cursor = conn.cursor()
 # ==========================
 # 2️⃣ Tạo database và bảng
 # ==========================
@@ -114,17 +112,16 @@ CREATE TABLE IF NOT EXISTS university_texts (
 
 conn.commit()
 
-# ==========================
-# 3️⃣ Hàm crawl dữ liệu chi tiết từ HTML
-# ==========================
+#crawl data from html detail page and save to mysql
+_scraper = cloudscraper.create_scraper()
+
 def crawl_university_text(path: str):
     """Trích xuất text từ các phần của trang chi tiết đại học."""
     base_url = "https://www.topuniversities.com"
     url = base_url + path
-    headers = {"User-Agent": "Mozilla/5.0"}
 
     try:
-        res = requests.get(url, headers=headers, timeout=15)
+        res = _scraper.get(url, timeout=15)
         if res.status_code != 200:
             print(f"⚠️ Lỗi {res.status_code} khi tải {url}")
             return {"about": None, "university_information": None, "scholarships": None, "rankings_and_ratings": None}
@@ -158,19 +155,15 @@ def crawl_university_text(path: str):
         print(f"❌ Lỗi khi crawl {url}: {e}")
         return {"about": None, "university_information": None, "scholarships": None, "rankings_and_ratings": None}
 
-# ==========================
-# 4️⃣ Đọc dữ liệu từ file JSON
-# ==========================
-with open("E:\\Tunz\\Python\\BTL\\raw_data_visualize.json", 'r', encoding='utf-8') as f:
+
+with open("raw_data_visualize_1.json", 'r', encoding='utf-8') as f:
     data = json.load(f)
 
 country_map = {}
 indicator_map = {}
 score_type_map = {}
 
-# ==========================
-# 5️⃣ Ghi dữ liệu vào database
-# ==========================
+#save data to mysql
 for i, uni in enumerate(data, start=1):
     print(f"⏳ ({i}/{len(data)}) Đang xử lý: {uni.get('title')}")
 

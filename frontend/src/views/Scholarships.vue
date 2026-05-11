@@ -129,11 +129,14 @@ const filteredScholarships = computed(() => {
 })
 
 function formatValue(val) {
-  if (!val && val !== 0) return 'N/A'
+  if (val === null || val === undefined || val === '') return 'N/A'
+  // Strip non-numeric characters (e.g. "$", ",") to get the raw number
+  const numeric = typeof val === 'string' ? Number(val.replace(/[^0-9.]/g, '')) : Number(val)
+  if (isNaN(numeric)) return val // Return original string if unparseable
   // If value looks like a percentage (0–100), show as %
-  if (val <= 100) return `${val}% tuition coverage`
+  if (numeric <= 100) return `${numeric}% tuition coverage`
   // Otherwise format as currency
-  return `$${Number(val).toLocaleString('en-US')}`
+  return `$${numeric.toLocaleString('en-US')}`
 }
 
 async function load() {
@@ -207,7 +210,8 @@ onMounted(load)
   transition: background 0.2s;
 }
 .search-wrap:focus-within {
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.25); 
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.1);
 }
 
 .search-icon {
@@ -240,7 +244,7 @@ onMounted(load)
   color: rgba(255, 255, 255, 0.6);
 }
 
-.search-input:focus { background: rgba(255,255,255,0.2); }
+
 
 .search-clear {
   position: absolute;

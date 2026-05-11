@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed, markRaw } from 'vue'
-import { authAPI } from '@/services/api'
+import { authAPI, userAPI } from '@/services/api'
 import { User } from '@/entities/User.js'
 
 export const useAuthStore = defineStore('auth', () => {
@@ -86,6 +86,38 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
+  const initUser = async () => {
+    if (!accessToken.value || user.value) return
+    try {
+      const profile = await userAPI.getProfile()
+      user.value = markRaw(profile)
+    } catch {
+      // token expired or invalid — leave as null, interceptor will handle redirect
+    }
+  }
+
+  const updateAvatar = (imageUrl) => {
+    if (!user.value) return
+    const updated = new User({
+      ...user.value.toPlainObject?.() ?? {},
+      id: user.value.id,
+      first_name: user.value.firstName,
+      last_name: user.value.lastName,
+      email: user.value.email,
+      image: imageUrl,
+      phone_number: user.value.phoneNumber,
+      gender: user.value.gender,
+      dob: user.value.dob,
+      country_id: user.value.countryId,
+      main_lang: user.value.mainLang,
+      add_lang: user.value.addLang,
+      ethnic_group: user.value.ethnicGroup,
+      special: user.value.special,
+      role_type: user.value.roleType,
+    })
+    user.value = markRaw(updated)
+  }
+
   return {
     user,
     accessToken,
@@ -98,6 +130,8 @@ export const useAuthStore = defineStore('auth', () => {
     verifySignupCode,
     login,
     logout,
-    setUser
+    setUser,
+    updateAvatar,
+    initUser
   }
 })

@@ -5,7 +5,6 @@ Handles user profile retrieval, updates, and password changes.
 from fastapi import APIRouter, HTTPException, status, Depends, UploadFile, File
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
-from sqlalchemy.exc import OperationalError, InterfaceError
 from app.schemas.user import UserResponse, UserUpdate, PasswordUpdate, CloseAccountRequest, AdminUserCreate, AdminUserUpdate
 from app.models.user import UserModel
 from app.utils.security import verify_password
@@ -18,8 +17,6 @@ import shutil
 
 AVATAR_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "static", "avatars")
 os.makedirs(AVATAR_DIR, exist_ok=True)
-
-_DB_ERROR = "Cannot connect to the database. Please try again later."
 
 router = APIRouter()
 
@@ -77,53 +74,6 @@ async def admin_create_user(
 
     user = UserModel.get_user_by_id(db, user_id)
     return user.to_dict()
-
-
-@router.put("/{user_id}", response_model=UserResponse)
-async def admin_update_user(
-    user_id: int,
-    payload: AdminUserUpdate,
-    current_user: Dict[str, Any] = Depends(get_current_user),
-    db: Session = Depends(get_db),
-):
-    """Update any user account (admin only)."""
-    if not UserModel.is_admin(current_user.get("role_type", 1)):
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
-
-    user = UserModel.get_user_by_id(db, user_id)
-    if not user:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
-
-    updates = payload.model_dump(exclude_none=True)
-
-    # Handle password separately
-    if "password" in updates:
-        UserModel.update_password(db, user_id, updates.pop("password"))
-
-    # Handle role_type separately (update_user doesn't support it)
-    if "role_type" in updates:
-        from app.entities.user import User as UserEntity
-        db.query(UserEntity).filter(UserEntity.id == user_id).update({UserEntity.role_type: updates.pop("role_type")})
-        db.commit()
-
-    # Handle image separately
-    if "image" in updates:
-        from app.entities.user import User as UserEntity
-        db.query(UserEntity).filter(UserEntity.id == user_id).update({UserEntity.image: updates.pop("image")})
-        db.commit()
-
-    if updates:
-        update_data = {
-            "id": user_id,
-            "first_name": updates.get("first_name", user["first_name"]),
-            "last_name": updates.get("last_name", user["last_name"]),
-            "email": updates.get("email", user["email"]),
-            **{k: v for k, v in updates.items() if k not in ("first_name", "last_name", "email")},
-        }
-        UserModel.update_user(db, update_data)
-
-    updated = UserModel.get_user_by_id(db, user_id)
-    return updated.to_dict()
 
 
 @router.get("/me", response_model=UserResponse)
@@ -186,10 +136,7 @@ async def update_user_profile(
     }
 
     # Update user
-    try:
-        success, message = UserModel.update_user(db, update_data)
-    except (OperationalError, InterfaceError) as exc:
-        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=_DB_ERROR) from exc
+    success, message = UserModel.update_user(db, update_data)
 
     if not success:
         raise HTTPException(
@@ -198,10 +145,7 @@ async def update_user_profile(
         )
 
     # Fetch updated user from database
-    try:
-        updated_user = UserModel.get_user_by_id(db, current_user['id'])
-    except (OperationalError, InterfaceError) as exc:
-        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=_DB_ERROR) from exc
+    updated_user = UserModel.get_user_by_id(db, current_user['id'])
 
     if not updated_user:
         raise HTTPException(
@@ -250,14 +194,11 @@ async def change_password(
         )
 
     # Update password
-    try:
-        success, message = UserModel.update_password(
-            db,
-            current_user['id'],
-            password_data.new_password
-        )
-    except (OperationalError, InterfaceError) as exc:
-        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=_DB_ERROR) from exc
+    success, message = UserModel.update_password(
+        db,
+        current_user['id'],
+        password_data.new_password
+    )
 
     if not success:
         raise HTTPException(
@@ -317,11 +258,7 @@ async def close_account(
     Close (deactivate) current user's account.
     Verifies password then sets is_active=False and stores the reason.
     """
-    try:
-        user = UserModel.get_user_by_id(db, current_user['id'])
-    except (OperationalError, InterfaceError) as exc:
-        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=_DB_ERROR) from exc
-
+    user = UserModel.get_user_by_id(db, current_user['id'])
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
 
@@ -331,11 +268,7 @@ async def close_account(
             detail="Incorrect password"
         )
 
-    try:
-        success, msg = UserModel.close_account(db, current_user['id'], request.reason)
-    except (OperationalError, InterfaceError) as exc:
-        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=_DB_ERROR) from exc
-
+    success, msg = UserModel.close_account(db, current_user['id'], request.reason)
     if not success:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=msg)
 
@@ -385,20 +318,48 @@ async def get_user_by_id(
     return UserResponse(**user_data)
 
 
-@router.delete("/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_user(
+@router.put("/{user_id}", response_model=UserResponse)
+async def admin_update_user(
     user_id: int,
+    payload: AdminUserUpdate,
     current_user: Dict[str, Any] = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Delete a user account (admin only)."""
+    """Update any user account (admin only)."""
     if not UserModel.is_admin(current_user.get("role_type", 1)):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
-    if user_id == current_user["id"]:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Cannot delete your own account")
+
     user = UserModel.get_user_by_id(db, user_id)
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
-    deleted = UserModel.delete_user(db, user_id)
-    if not deleted:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to delete user")
+
+    updates = payload.model_dump(exclude_none=True)
+
+    # Handle password separately
+    if "password" in updates:
+        UserModel.update_password(db, user_id, updates.pop("password"))
+
+    # Handle role_type separately (update_user doesn't support it)
+    if "role_type" in updates:
+        from app.entities.user import User as UserEntity
+        db.query(UserEntity).filter(UserEntity.id == user_id).update({UserEntity.role_type: updates.pop("role_type")})
+        db.commit()
+
+    # Handle image separately
+    if "image" in updates:
+        from app.entities.user import User as UserEntity
+        db.query(UserEntity).filter(UserEntity.id == user_id).update({UserEntity.image: updates.pop("image")})
+        db.commit()
+
+    if updates:
+        update_data = {
+            "id": user_id,
+            "first_name": updates.get("first_name", user["first_name"]),
+            "last_name": updates.get("last_name", user["last_name"]),
+            "email": updates.get("email", user["email"]),
+            **{k: v for k, v in updates.items() if k not in ("first_name", "last_name", "email")},
+        }
+        UserModel.update_user(db, update_data)
+
+    updated = UserModel.get_user_by_id(db, user_id)
+    return updated.to_dict()

@@ -11,6 +11,12 @@ from typing import Dict, List, Optional, Tuple
 # Entry requirement columns to check for data completeness
 _REQ_KEYS = ("IELTS", "TOEFL", "GPA", "SAT", "GRE", "GMAT", "ACT")
 
+# Scholarship columns — if any row has these, data is rich enough
+_SCHOLARSHIP_KEYS = ("value", "duration", "criteria")
+
+# Generic columns that signal meaningful payload (not just identifiers)
+_IDENTIFIER_KEYS = frozenset({"id", "university_id", "country_id", "name", "rank"})
+
 
 def check_data_quality(db_data: List[Dict]) -> Tuple[bool, str]:
     """
@@ -36,6 +42,25 @@ def check_data_quality(db_data: List[Dict]) -> Tuple[bool, str]:
         for k in _REQ_KEYS
     )
     if has_any_req:
+        return False, found_schools
+
+    # If ANY row has scholarship data, data is rich
+    has_any_scholarship = any(
+        r.get(k) is not None
+        for r in top_records
+        for k in _SCHOLARSHIP_KEYS
+    )
+    if has_any_scholarship:
+        return False, found_schools
+
+    # Generic fallback: if any row has a non-null non-identifier field, data is usable
+    has_any_payload = any(
+        v is not None
+        for r in top_records
+        for k, v in r.items()
+        if k not in _IDENTIFIER_KEYS
+    )
+    if has_any_payload:
         return False, found_schools
 
     # Check fee coverage
@@ -94,6 +119,9 @@ def format_user_profile(profile: Optional[Dict]) -> str:
         ("inter_bac", "IB Score"),
         ("cam_adv_test", "Cambridge Advanced"),
         ("graduate_year", "Graduation Year"),
+        ("country", "Country"),
+        ("main_lang", "Main Language"),
+        ("add_lang", "Second Language"),
     ]
     lines = []
     for key, label in fields:

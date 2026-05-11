@@ -40,6 +40,7 @@ def main():
     # Run uvicorn with proper settings
     cmd = [
         sys.executable,
+        "-u",          # force unbuffered stdout/stderr so print() shows immediately
         "-m",
         "uvicorn",
         "app.main:app",
@@ -47,9 +48,11 @@ def main():
         "--port", "8000",
         "--reload"
     ]
-    
+
+    env = {**os.environ, "PYTHONUNBUFFERED": "1"}
+
     try:
-        subprocess.run(cmd)
+        subprocess.run(cmd, env=env)
     except KeyboardInterrupt:
         print("\n\nServer stopped by user.")
         sys.exit(0)

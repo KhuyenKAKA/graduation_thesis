@@ -4,7 +4,7 @@ SQLAlchemy ORM model for the `scholarships` table.
 FK: scholarships.university_id → universities.id (ON DELETE CASCADE)
 """
 from __future__ import annotations
-from sqlalchemy import Integer, Float, Text, ForeignKey
+from sqlalchemy import Integer, String, Float, Text, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from typing import TYPE_CHECKING, Optional
 from app.database import Base
@@ -21,8 +21,8 @@ class Scholarship(Base):
         ForeignKey("universities.id", ondelete="CASCADE"), nullable=True
     )
     name: Mapped[str] = mapped_column(Text, default="")
-    value: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
-    duration: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    value: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    duration: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     criteria: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
     # ── Relationships ──────────────────────────────────────────────────────
@@ -34,10 +34,8 @@ class Scholarship(Base):
     # ── Business methods ──────────────────────────────────────────────────────
 
     def get_formatted_value(self) -> str:
-        """Return scholarship value formatted as currency string."""
-        if self.value is None:
-            return "N/A"
-        return f"${self.value:,.0f}"
+        """Return scholarship value as-is (already includes currency unit)."""
+        return self.value if self.value else "N/A"
 
     # ── Factory / serialization ───────────────────────────────────────────────
 
@@ -48,18 +46,20 @@ class Scholarship(Base):
         obj.university_id = data.get("university_id")
         obj.name = data.get("name", "")
         obj.value = data.get("value")
-        obj.duration = data.get("duration")
+        obj.duration = int(data["duration"]) if data.get("duration") is not None else None
         obj.criteria = data.get("criteria")
         return obj
 
     def to_dict(self) -> dict:
+        def _s(v):
+            return str(v) if v is not None else None
         return {
             "id": self.id,
             "university_id": self.university_id,
             "name": self.name,
             "value": self.value,
             "duration": self.duration,
-            "criteria": self.criteria,
+            "criteria": _s(self.criteria),
         }
 
     def __repr__(self) -> str:

@@ -10,24 +10,29 @@ Endpoints:
 
 import asyncio
 import json
+import time
 import uuid
-from typing import AsyncGenerator, List, Optional
+from datetime import datetime
+from typing import AsyncGenerator, Dict, List, Optional, Tuple
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
+from sqlalchemy.orm import Session
 
-from app.database import execute_query
+from app.database import get_db, SessionLocal
+from app.entities.chat_session import ChatSession
+from app.entities.chat_message import ChatMessage
+from app.entities.chat_summary import ChatSummary
 from app.dependencies import get_current_user
 from app.utils.chatbot import ChatbotEngine
 
 router = APIRouter()
-
-# ---------------------------------------------------------------------------
-# Lazy singleton engine — initialized on first request to avoid import-time
-# failures if the Gemini key is not yet configured.
-# ---------------------------------------------------------------------------
 _engine: Optional[ChatbotEngine] = None
+
+# Profile cache: {user_id: (profile_dict, timestamp)}
+_profile_cache: Dict[int, Tuple[Optional[dict], float]] = {}
+_PROFILE_TTL = 300  # 5 minutes
 
 
 def _get_engine() -> ChatbotEngine:
@@ -42,62 +47,17 @@ def _get_engine() -> ChatbotEngine:
             gemini_key = None
             tavily_key = None
             gemini_key_pro = None
-        _engine = ChatbotEngine(gemini_key=gemini_key, tavily_key=tavily_key, gemini_key_pro=gemini_key_pro)
+        _engine = ChatbotEngine(
+                gemini_key     = gemini_key,
+                tavily_key     = tavily_key,
+                gemini_key_pro = gemini_key_pro,
+                google_key     = getattr(settings, "GOOGLE_GENAI_KEY", "") or "",
+                primary_base   = getattr(settings, "PRIMARY_API_BASE",  "") or "",
+                primary_model  = getattr(settings, "PRIMARY_MODEL",      "") or "",
+                wokushop_base  = getattr(settings, "WOKUSHOP_BASE",      "") or "",
+                wokushop_model = getattr(settings, "WOKUSHOP_MODEL",     "") or "",
+            )
     return _engine
-
-
-# ---------------------------------------------------------------------------
-# DB helpers — create tables once at module load (idempotent)
-# ---------------------------------------------------------------------------
-
-def _ensure_tables() -> None:
-    """Create chat_sessions and chat_messages tables if they don't exist yet."""
-    try:
-        execute_query(
-            """
-            CREATE TABLE IF NOT EXISTS chat_sessions (
-                id          VARCHAR(36)   NOT NULL PRIMARY KEY,
-                user_id     INT           NULL,
-                title       VARCHAR(255)  NOT NULL DEFAULT 'New Chat',
-                created_at  TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                updated_at  TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP
-                                          ON UPDATE CURRENT_TIMESTAMP,
-                INDEX idx_cs_user (user_id)
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-            """
-        )
-        execute_query(
-            """
-            CREATE TABLE IF NOT EXISTS chat_messages (
-                id          INT AUTO_INCREMENT PRIMARY KEY,
-                session_id  VARCHAR(36)         NOT NULL,
-                role        ENUM('user','assistant') NOT NULL,
-                content     TEXT                NOT NULL,
-                created_at  TIMESTAMP           NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (session_id) REFERENCES chat_sessions(id) ON DELETE CASCADE,
-                INDEX idx_cm_session (session_id)
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-            """
-        )
-        execute_query(
-            """
-            CREATE TABLE IF NOT EXISTS chat_session_summaries (
-                session_id        VARCHAR(36)  NOT NULL PRIMARY KEY,
-                summary           TEXT         NOT NULL,
-                updated_msg_count INT          NOT NULL DEFAULT 0,
-                updated_at        TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP
-                                               ON UPDATE CURRENT_TIMESTAMP,
-                FOREIGN KEY (session_id) REFERENCES chat_sessions(id) ON DELETE CASCADE
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-            """
-        )
-    except Exception as exc:
-        # Non-fatal: tables might already exist or user lacks DDL rights
-        print(f"[Chatbot] Table init warning: {exc}")
-
-
-# Run once when the module is first imported
-_ensure_tables()
 
 
 # ---------------------------------------------------------------------------
@@ -133,83 +93,105 @@ class MessageItem(BaseModel):
 # ---------------------------------------------------------------------------
 
 def _get_or_create_session(session_id: Optional[str], user_id: Optional[int], title: str) -> str:
-    if session_id:
-        row = execute_query(
-            "SELECT id FROM chat_sessions WHERE id = %s",
-            (session_id,),
-            fetch=True,
-            fetch_one=True,
-        )
-        if row:
-            return session_id
+    db: Session = SessionLocal()
+    try:
+        if session_id:
+            row = db.query(ChatSession).filter(ChatSession.id == session_id).first()
+            if row:
+                return session_id
 
-    # Create new session
-    new_id = str(uuid.uuid4())
-    safe_title = title[:255]
-    execute_query(
-        "INSERT INTO chat_sessions (id, user_id, title) VALUES (%s, %s, %s)",
-        (new_id, user_id, safe_title),
-    )
-    return new_id
+        new_id = str(uuid.uuid4())
+        session = ChatSession(id=new_id, user_id=user_id, title=title[:255])
+        db.add(session)
+        db.commit()
+        return new_id
+    finally:
+        db.close()
 
 
 def _load_history(session_id: str, limit: int = 10) -> List[dict]:
-    rows = execute_query(
-        """
-        SELECT role, content
-        FROM chat_messages
-        WHERE session_id = %s
-        ORDER BY id DESC
-        LIMIT %s
-        """,
-        (session_id, limit),
-        fetch=True,
-    ) or []
-    return [{"role": r["role"], "content": r["content"]} for r in reversed(rows)]
+    db: Session = SessionLocal()
+    try:
+        rows = (
+            db.query(ChatMessage)
+            .filter(ChatMessage.session_id == session_id)
+            .order_by(ChatMessage.id.desc())
+            .limit(limit)
+            .all()
+        )
+        return [{"role": r.role, "content": r.content} for r in reversed(rows)]
+    finally:
+        db.close()
 
 
 def _load_user_profile(user_id: Optional[int]) -> Optional[dict]:
-    """Load study background scores for a user (used as profile context for the AI)."""
+    """Load study background scores + language info for a user (used as profile context for the AI)."""
     if not user_id:
         return None
+    # Return cached profile if still fresh
+    if user_id in _profile_cache:
+        cached_profile, cached_ts = _profile_cache[user_id]
+        if time.time() - cached_ts < _PROFILE_TTL:
+            return cached_profile
     try:
         from app.models.study_bg import StudyBGModel
-        profile = StudyBGModel.get_by_user_id(user_id)
-        if not profile:
-            return None
-        # Return only the numeric score fields; omit nulls
-        keys = ("ielts", "toefl", "gpa", "sat", "gre", "gmat", "act",
-                "inter_bac", "cam_adv_test", "level", "major", "graduate_year")
-        return {k: profile[k] for k in keys if profile.get(k) is not None}
+        from app.entities.user import User as UserEntity
+        from app.entities.country import Country as CountryEntity
+        db: Session = SessionLocal()
+        try:
+            profile = StudyBGModel.get_by_user_id(db, user_id)
+            user_row = db.query(UserEntity).filter(UserEntity.id == user_id).first()
+
+            result: dict = {}
+            if profile:
+                keys = ("ielts", "toefl", "gpa", "sat", "gre", "gmat", "act",
+                        "inter_bac", "cam_adv_test", "level", "major", "graduate_year")
+                result = {k: profile[k] for k in keys if profile.get(k) is not None}
+            if user_row:
+                if user_row.main_lang:
+                    result["main_lang"] = user_row.main_lang
+                if user_row.add_lang:
+                    result["add_lang"] = user_row.add_lang
+                if user_row.country_id:
+                    country = db.query(CountryEntity).filter(CountryEntity.id == user_row.country_id).first()
+                    if country:
+                        result["country"] = country.name
+        finally:
+            db.close()
+        profile_result = result if result else None
+        _profile_cache[user_id] = (profile_result, time.time())
+        print(f"[Chatbot] Loaded profile for user_id={user_id}: {profile_result}")
+        return profile_result
     except Exception as exc:
         print(f"[Chatbot] Failed to load user profile for user_id={user_id}: {exc}")
         return None
 
 
 def _save_messages(session_id: str, user_msg: str, bot_reply: str) -> None:
-    execute_query(
-        "INSERT INTO chat_messages (session_id, role, content) VALUES (%s, %s, %s)",
-        (session_id, "user", user_msg),
-    )
-    execute_query(
-        "INSERT INTO chat_messages (session_id, role, content) VALUES (%s, %s, %s)",
-        (session_id, "assistant", bot_reply),
-    )
-    execute_query(
-        "UPDATE chat_sessions SET updated_at = CURRENT_TIMESTAMP WHERE id = %s",
-        (session_id,),
-    )
+    db: Session = SessionLocal()
+    try:
+        db.add(ChatMessage(session_id=session_id, role="user", content=user_msg))
+        db.add(ChatMessage(session_id=session_id, role="assistant", content=bot_reply))
+        session = db.query(ChatSession).filter(ChatSession.id == session_id).first()
+        if session:
+            session.updated_at = datetime.utcnow()
+        db.commit()
+    finally:
+        db.close()
 
 
 def _load_summary(session_id: str) -> str:
     """Load the stored conversation summary for a session (empty string if none)."""
-    row = execute_query(
-        "SELECT summary FROM chat_session_summaries WHERE session_id = %s",
-        (session_id,),
-        fetch=True,
-        fetch_one=True,
-    )
-    return row["summary"] if row else ""
+    db: Session = SessionLocal()
+    try:
+        row = (
+            db.query(ChatSummary)
+            .filter(ChatSummary.session_id == session_id)
+            .first()
+        )
+        return row.summary if row else ""
+    finally:
+        db.close()
 
 
 def _maybe_update_summary(session_id: str, engine) -> None:
@@ -219,52 +201,51 @@ def _maybe_update_summary(session_id: str, engine) -> None:
     the last summary update.  Runs synchronously after the SSE done event.
     """
     try:
-        count_row = execute_query(
-            "SELECT COUNT(*) AS cnt FROM chat_messages WHERE session_id = %s",
-            (session_id,),
-            fetch=True,
-            fetch_one=True,
-        )
-        count = count_row["cnt"] if count_row else 0
-        if count < 10:
-            return
+        db: Session = SessionLocal()
+        try:
+            count = db.query(ChatMessage).filter(ChatMessage.session_id == session_id).count()
+            if count < 10:
+                return
 
-        existing = execute_query(
-            "SELECT updated_msg_count FROM chat_session_summaries WHERE session_id = %s",
-            (session_id,),
-            fetch=True,
-            fetch_one=True,
-        )
-        last_count = existing["updated_msg_count"] if existing else 0
-        if count - last_count < 10:
-            return  # Not enough new messages to warrant an update
+            existing = (
+                db.query(ChatSummary)
+                .filter(ChatSummary.session_id == session_id)
+                .first()
+            )
+            last_count = existing.updated_msg_count if existing else 0
+            if count - last_count < 10:
+                return
 
-        # Summarise everything except the most recent 5 messages
-        all_msgs = execute_query(
-            "SELECT role, content FROM chat_messages WHERE session_id = %s ORDER BY id ASC",
-            (session_id,),
-            fetch=True,
-        ) or []
-        older = all_msgs[:-5] if len(all_msgs) > 5 else all_msgs
-        if not older:
-            return
+            all_msgs = (
+                db.query(ChatMessage)
+                .filter(ChatMessage.session_id == session_id)
+                .order_by(ChatMessage.id.asc())
+                .all()
+            )
+            older = all_msgs[:-5] if len(all_msgs) > 5 else all_msgs
+            if not older:
+                return
 
-        summary_text = engine.summarize_history(older)
-        if not summary_text:
-            return
+            older_dicts = [{"role": m.role, "content": m.content} for m in older]
+            summary_text = engine.summarize_history(older_dicts)
+            if not summary_text:
+                return
 
-        execute_query(
-            """
-            INSERT INTO chat_session_summaries (session_id, summary, updated_msg_count)
-            VALUES (%s, %s, %s)
-            ON DUPLICATE KEY UPDATE
-                summary           = VALUES(summary),
-                updated_msg_count = VALUES(updated_msg_count),
-                updated_at        = CURRENT_TIMESTAMP
-            """,
-            (session_id, summary_text, count),
-        )
-        print(f"[Chatbot] Summary updated for session {session_id} ({count} messages).")
+            if existing:
+                existing.summary = summary_text
+                existing.updated_msg_count = count
+                existing.updated_at = datetime.utcnow()
+            else:
+                db.add(ChatSummary(
+                    session_id=session_id,
+                    summary=summary_text,
+                    updated_msg_count=count,
+                    updated_at=datetime.utcnow(),
+                ))
+            db.commit()
+            print(f"[Chatbot] Summary updated for session {session_id} ({count} messages).")
+        finally:
+            db.close()
     except Exception as exc:
         print(f"[Chatbot] Summary update error: {exc}")
 
@@ -308,54 +289,56 @@ async def chat(req: ChatRequest, current_user: dict = Depends(get_current_user))
 async def list_sessions(current_user: dict = Depends(get_current_user)):
     """List the 50 most recent chat sessions for the authenticated user."""
     user_id = current_user["id"]
-
-    rows = execute_query(
-        """
-        SELECT id, title, created_at
-        FROM chat_sessions
-        WHERE user_id = %s
-        ORDER BY updated_at DESC
-        LIMIT 50
-        """,
-        (user_id,),
-        fetch=True,
-    ) or []
-
-    return [
-        SessionItem(id=r["id"], title=r["title"], created_at=str(r["created_at"]))
-        for r in rows
-    ]
+    db: Session = SessionLocal()
+    try:
+        rows = (
+            db.query(ChatSession)
+            .filter(ChatSession.user_id == user_id)
+            .order_by(ChatSession.updated_at.desc())
+            .limit(50)
+            .all()
+        )
+        return [
+            SessionItem(id=r.id, title=r.title, created_at=str(r.created_at))
+            for r in rows
+        ]
+    finally:
+        db.close()
 
 
 @router.get("/sessions/{session_id}/messages", response_model=List[MessageItem])
 async def get_messages(session_id: str, current_user: dict = Depends(get_current_user)):
-    """Return all messages in a chat session, ordered oldest → newest."""
-    rows = execute_query(
-        """
-        SELECT id, role, content, created_at
-        FROM chat_messages
-        WHERE session_id = %s
-        ORDER BY id ASC
-        """,
-        (session_id,),
-        fetch=True,
-    ) or []
-
-    return [
-        MessageItem(
-            id=r["id"],
-            role=r["role"],
-            content=r["content"],
-            created_at=str(r["created_at"]),
+    """Return all messages in a chat session, ordered oldest \u2192 newest."""
+    db: Session = SessionLocal()
+    try:
+        rows = (
+            db.query(ChatMessage)
+            .filter(ChatMessage.session_id == session_id)
+            .order_by(ChatMessage.id.asc())
+            .all()
         )
-        for r in rows
-    ]
+        return [
+            MessageItem(
+                id=r.id,
+                role=r.role,
+                content=r.content,
+                created_at=str(r.created_at),
+            )
+            for r in rows
+        ]
+    finally:
+        db.close()
 
 
 @router.delete("/sessions/{session_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_session(session_id: str, current_user: dict = Depends(get_current_user)):
     """Delete a session and all its messages (cascades via FK)."""
-    execute_query("DELETE FROM chat_sessions WHERE id = %s", (session_id,))
+    db: Session = SessionLocal()
+    try:
+        db.query(ChatSession).filter(ChatSession.id == session_id).delete(synchronize_session=False)
+        db.commit()
+    finally:
+        db.close()
 
 
 # ---------------------------------------------------------------------------
@@ -471,7 +454,7 @@ async def search_online(req: SearchOnlineRequest):
 
     engine        = _get_engine()
     search_engine = OnlineSearchEngine(
-        stream_gemini=engine._stream_gemini,
+        stream_gemini=engine._gemini.stream,
         tavily_key=tavily_key,
     )
 
@@ -499,14 +482,19 @@ async def search_online(req: SearchOnlineRequest):
             if req.session_id and full_reply:
                 reply_text = "".join(full_reply)
                 try:
-                    execute_query(
-                        "INSERT INTO chat_messages (session_id, role, content) VALUES (%s, %s, %s)",
-                        (req.session_id, "assistant", f"[Online Search]\n{reply_text}"),
-                    )
-                    execute_query(
-                        "UPDATE chat_sessions SET updated_at = CURRENT_TIMESTAMP WHERE id = %s",
-                        (req.session_id,),
-                    )
+                    _db: Session = SessionLocal()
+                    try:
+                        _db.add(ChatMessage(
+                            session_id=req.session_id,
+                            role="assistant",
+                            content=f"[Online Search]\n{reply_text}",
+                        ))
+                        sess = _db.query(ChatSession).filter(ChatSession.id == req.session_id).first()
+                        if sess:
+                            sess.updated_at = datetime.utcnow()
+                        _db.commit()
+                    finally:
+                        _db.close()
                 except Exception:
                     pass
             yield f"event: done\ndata: {{}}\n\n"
@@ -520,3 +508,4 @@ async def search_online(req: SearchOnlineRequest):
             "Connection": "keep-alive",
         },
     )
+ 

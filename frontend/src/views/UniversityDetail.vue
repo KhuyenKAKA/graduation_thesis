@@ -60,7 +60,6 @@
                 <div v-for="card in bachelorCards" :key="card.label" class="req-card">
                   <div class="req-label">{{ card.label }}</div>
                   <div class="req-value">{{ card.value }}</div>
-                  <div class="req-plus">+</div>
                 </div>
               </div>
               <p v-else class="no-data">No data available</p>
@@ -71,7 +70,6 @@
                 <div v-for="card in masterCards" :key="card.label" class="req-card">
                   <div class="req-label">{{ card.label }}</div>
                   <div class="req-value">{{ card.value }}</div>
-                  <div class="req-plus">+</div>
                 </div>
               </div>
               <p v-else class="no-data">No data available</p>
@@ -337,13 +335,14 @@ onMounted(async () => {
       universityAPI.getRankingScores(uniId),
     ])
     if (uniRes.status === 'fulfilled') {
-      university.value = uniRes.value
-      detailInfo.value = uniRes.value.detail_info
+      const uni = uniRes.value
+      university.value = uni
+      detailInfo.value = uni.detail_info
       // Entry requirements are already embedded in the university detail response
-      const entryList = uniRes.value?.entry_requirements || []
+      const entryList = uni?.entry_requirements || []
       entryRequirements.value = entryList.find(r => r.degree_type === 1) || null
       masterRequirements.value = entryList.find(r => r.degree_type === 2) || null
-      scholarships.value = uniRes.value.scholarships || []
+      scholarships.value = uni.scholarships || []
     } else {
       const err = uniRes.reason
       const detail = err?.response?.data?.detail || 'Cannot connect to the database. Please try again later.'

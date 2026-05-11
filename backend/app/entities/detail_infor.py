@@ -60,21 +60,23 @@ class DetailInfor(Base):
         return obj
 
     def to_dict(self) -> dict:
+        def _s(v):
+            return str(v) if v is not None else None
         return {
             "id": self.id,
             "university_id": self.university_id,
-            "fee": self.fee,
+            "fee": _s(self.fee),
             "scholarship": self.scholarship,
-            "domestic": self.domestic,
-            "international": self.international,
-            "english_test": self.english_test,
-            "academic_test": self.academic_test,
-            "total_stu": self.total_stu,
-            "ug_rate": self.ug_rate,
-            "pg_rate": self.pg_rate,
-            "inter_total": self.inter_total,
-            "inter_ug_rate": self.inter_ug_rate,
-            "inter_pg_rate": self.inter_pg_rate,
+            "domestic": _s(self.domestic),
+            "international": _s(self.international),
+            "english_test": _s(self.english_test),
+            "academic_test": _s(self.academic_test),
+            "total_stu": _s(self.total_stu),
+            "ug_rate": _s(self.ug_rate),
+            "pg_rate": _s(self.pg_rate),
+            "inter_total": _s(self.inter_total),
+            "inter_ug_rate": _s(self.inter_ug_rate),
+            "inter_pg_rate": _s(self.inter_pg_rate),
         }
 
     def __repr__(self) -> str:

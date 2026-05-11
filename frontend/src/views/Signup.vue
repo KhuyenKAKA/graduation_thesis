@@ -517,11 +517,26 @@ const cancelVerification = () => {
   font-weight: 500;
 }
 
+/* Trạng thái mặc định cho các ô Name, Email, Country */
 .form-input {
-  height: 48px !important;
-  border: 1px solid #ddd !important;
-  font-size: 14px;
-  padding: 0 11px !important;
+  height: 48px;
+  border-radius: 4px;
+  border: 1px solid #ddd !important; /* Viền xám nhẹ mặc định */
+  transition: all 0.3s;
+}
+
+/* Hiệu ứng Hover cho các ô Name, Email (Giống Password) */
+.form-input:hover {
+  border-color: #b3b3b3 !important;
+  background-color: transparent !important; /* Đảm bảo không bị đổi màu nền */
+}
+
+/* Hiệu ứng khi Click (Focus) vào các ô Name, Email (Giống Password) */
+.form-input:focus,
+.form-input-focused {
+  border-color: #1e90ff !important;
+  box-shadow: 0 0 0 2px rgba(30, 144, 255, 0.1) !important;
+  outline: none;
 }
 
 :deep(.ant-input) {
@@ -531,31 +546,31 @@ const cancelVerification = () => {
   border-radius: 4px !important;
 }
 
+/* Khung bao ngoài của Password */
 :deep(.ant-input-password) {
+  height: 48px;
   padding: 0 11px;
   border-radius: 4px;
-  display: flex;
-  align-items: center;
-  border: 1px solid #d9d9d9;
-  height: 48px;
+  border: 1px solid #ddd !important; /* Màu mặc định giống các ô trên */
+  transition: all 0.3s;
 }
 
-:deep(.ant-input-password .ant-input) {
-  height: 46px;
-  font-size: 14px;
+/* Thẻ input thực sự bên trong - loại bỏ mọi hiệu ứng hover/focus riêng lẻ */
+:deep(.ant-input-password input.ant-input) {
   border: none !important;
   box-shadow: none !important;
   background: transparent !important;
-  padding: 0 !important;
+  height: 100% !important;
 }
 
-:deep(.ant-input:hover),
-:deep(.ant-input-password input:hover) {
+/* Hiệu ứng khi Hover vào cả cụm Password */
+:deep(.ant-input-password:hover) {
   border-color: #b3b3b3 !important;
 }
 
-:deep(.ant-input:focus),
-:deep(.ant-input-password input:focus) {
+/* Hiệu ứng khi Click (Focus) vào cả cụm Password */
+:deep(.ant-input-password-focused),
+:deep(.ant-input-password:focus-within) {
   border-color: #1e90ff !important;
   box-shadow: 0 0 0 2px rgba(30, 144, 255, 0.1) !important;
 }

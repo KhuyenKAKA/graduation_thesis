@@ -1,6 +1,6 @@
 <template>
   <div class="form-wrapper">
-    <Header />
+    <Header :adminMode="true" />
 
     <div class="form-content">
       <!-- Page Header -->
@@ -20,11 +20,11 @@
           <div class="grid-2">
             <div class="field">
               <label>University Name <span class="req">*</span></label>
-              <input v-model="form.name" required placeholder="e.g. Massachusetts Institute of Technology" />
+              <input v-model="form.name" required placeholder="" />
             </div>
             <div class="field">
               <label>City</label>
-              <input v-model="form.city" placeholder="e.g. Cambridge" />
+              <input v-model="form.city" placeholder="" />
             </div>
             <div class="field">
               <label>Region</label>
@@ -52,15 +52,15 @@
             </div>
             <div class="field">
               <label>Path / Slug</label>
-              <input v-model="form.path" placeholder="e.g. massachusetts-institute-of-technology" />
+              <input v-model="form.path" placeholder="" />
             </div>
             <div class="field">
               <label>World Rank</label>
-              <input v-model.number="form.rank_int" type="number" min="1" placeholder="e.g. 1" />
+              <input v-model.number="form.rank_int" type="number" min="1" placeholder="" />
             </div>
             <div class="field">
               <label>Overall Score</label>
-              <input v-model.number="form.overall_score" type="number" step="0.01" min="0" max="100" placeholder="e.g. 96.7" />
+              <input v-model.number="form.overall_score" type="number" step="0.01" min="0" max="100" placeholder="" />
             </div>
           </div>
           <!-- Logo preview -->
@@ -79,7 +79,7 @@
           <div class="grid-2">
             <div class="field">
               <label>Tuition Fee (USD/year)</label>
-              <input v-model="form.detail.fee" type="number" step="0.01" min="0" placeholder="e.g. 57986" />
+              <input v-model="form.detail.fee" type="number" step="0.01" min="0" placeholder="" />
             </div>
             <div class="field field-checkbox">
               <label>Scholarship Available</label>
@@ -92,43 +92,43 @@
             </div>
             <div class="field">
               <label>Domestic Student Rate (%)</label>
-              <input v-model="form.detail.domestic" type="number" step="0.1" min="0" max="100" placeholder="e.g. 70.5" />
+              <input v-model="form.detail.domestic" type="number" step="0.1" min="0" max="100" placeholder="" />
             </div>
             <div class="field">
               <label>International Student Rate (%)</label>
-              <input v-model="form.detail.international" type="number" step="0.1" min="0" max="100" placeholder="e.g. 29.5" />
+              <input v-model="form.detail.international" type="number" step="0.1" min="0" max="100" placeholder="" />
             </div>
             <div class="field">
               <label>English Test Requirements</label>
-              <input v-model="form.detail.english_test" placeholder="e.g. TOEFL 90, IELTS 7.0" />
+              <input v-model="form.detail.english_test" placeholder="" />
             </div>
             <div class="field">
               <label>Academic Test Requirements</label>
-              <input v-model="form.detail.academic_test" placeholder="e.g. SAT, GRE, GMAT" />
+              <input v-model="form.detail.academic_test" placeholder="" />
             </div>
             <div class="field">
               <label>Total Students</label>
-              <input v-model.number="form.detail.total_stu" type="number" min="0" placeholder="e.g. 11520" />
+              <input v-model.number="form.detail.total_stu" type="number" min="0" placeholder="" />
             </div>
             <div class="field">
               <label>Undergraduate Rate (%)</label>
-              <input v-model="form.detail.ug_rate" type="number" step="0.1" min="0" max="100" placeholder="e.g. 45.0" />
+              <input v-model="form.detail.ug_rate" type="number" step="0.1" min="0" max="100" placeholder="" />
             </div>
             <div class="field">
               <label>Postgraduate Rate (%)</label>
-              <input v-model="form.detail.pg_rate" type="number" step="0.1" min="0" max="100" placeholder="e.g. 55.0" />
+              <input v-model="form.detail.pg_rate" type="number" step="0.1" min="0" max="100" placeholder="" />
             </div>
             <div class="field">
               <label>Total International Students</label>
-              <input v-model.number="form.detail.inter_total" type="number" min="0" placeholder="e.g. 3800" />
+              <input v-model.number="form.detail.inter_total" type="number" min="0" placeholder="" />
             </div>
             <div class="field">
               <label>Intl Undergraduate Rate (%)</label>
-              <input v-model="form.detail.inter_ug_rate" type="number" step="0.1" min="0" max="100" placeholder="e.g. 10.0" />
+              <input v-model="form.detail.inter_ug_rate" type="number" step="0.1" min="0" max="100" placeholder="" />
             </div>
             <div class="field">
               <label>Intl Postgraduate Rate (%)</label>
-              <input v-model="form.detail.inter_pg_rate" type="number" step="0.1" min="0" max="100" placeholder="e.g. 20.0" />
+              <input v-model="form.detail.inter_pg_rate" type="number" step="0.1" min="0" max="100" placeholder="" />
             </div>
           </div>
         </div>
@@ -186,7 +186,7 @@
                     <input
                       v-model="form.scores[cat.key][ind.key + '_rank']"
                       type="number" min="1"
-                      placeholder="e.g. 1"
+                      placeholder=""
                       class="score-input"
                     />
                   </div>
@@ -237,14 +237,14 @@ const degreeTabs = [
 ]
 
 const testFields = [
-  { key: 'SAT',   label: 'SAT',   placeholder: 'e.g. 1500' },
-  { key: 'ACT',   label: 'ACT',   placeholder: 'e.g. 34' },
-  { key: 'GRE',   label: 'GRE',   placeholder: 'e.g. 320' },
-  { key: 'GMAT',  label: 'GMAT',  placeholder: 'e.g. 650' },
-  { key: 'ATAR',  label: 'ATAR',  placeholder: 'e.g. 99.5' },
-  { key: 'GPA',   label: 'GPA',   placeholder: 'e.g. 3.9' },
-  { key: 'TOEFL', label: 'TOEFL', placeholder: 'e.g. 100' },
-  { key: 'IELTS', label: 'IELTS', placeholder: 'e.g. 7.0' }
+  { key: 'SAT',   label: 'SAT',   placeholder: '' },
+  { key: 'ACT',   label: 'ACT',   placeholder: '' },
+  { key: 'GRE',   label: 'GRE',   placeholder: '' },
+  { key: 'GMAT',  label: 'GMAT',  placeholder: '' },
+  { key: 'ATAR',  label: 'ATAR',  placeholder: '' },
+  { key: 'GPA',   label: 'GPA',   placeholder: '' },
+  { key: 'TOEFL', label: 'TOEFL', placeholder: '' },
+  { key: 'IELTS', label: 'IELTS', placeholder: '' }
 ]
 
 const scoreCategories = [

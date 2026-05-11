@@ -36,6 +36,14 @@ from app.utils.chatbot.prompts import (
     COMPARE_PROMPT,
 )
 
+_TOPICS_NOT_IN_DB = (
+    "curriculum", "syllabus", "course",
+    "module", "subject", 
+    "timetable", "schedule", "thesis", "dissertation", "capstone",
+    "internship program", "co-op", "research opportunity",
+    "faculty", "professor",  "class size",
+)
+
 
 class ChatbotEngine:
     """
@@ -46,8 +54,19 @@ class ChatbotEngine:
       process_stream(message, history, ...) -> Generator   (SSE chunks)
     """
 
-    def __init__(self, gemini_key: Optional[str] = None, tavily_key: Optional[str] = None, gemini_key_pro: Optional[str] = None):
-        self._gemini = GeminiClient(gemini_key or "", pro_key=gemini_key_pro or "")
+    def __init__(self, gemini_key: Optional[str] = None, tavily_key: Optional[str] = None,
+                 gemini_key_pro: Optional[str] = None, google_key: Optional[str] = None,
+                 primary_base: str = "", primary_model: str = "",
+                 wokushop_base: str = "", wokushop_model: str = ""):
+        self._gemini = GeminiClient(
+            primary_key=gemini_key or "",
+            primary_base=primary_base,
+            primary_model=primary_model,
+            wokushop_key=gemini_key_pro or "",
+            wokushop_base=wokushop_base,
+            wokushop_model=wokushop_model,
+            google_key=google_key or "",
+        )
         self._tavily_key = tavily_key
         self._router = IntentRouter()
         self._sql_engine: Optional[TextToSQLEngine] = None
@@ -166,15 +185,36 @@ class ChatbotEngine:
             print(f"[Chatbot] SQL validation failed: {e}")
             return "Sorry, I couldn't generate a valid query. Please try rephrasing your question."
 
-        # Execute SQL
-        try:
-            db_data = execute_query(sql, fetch=True) or []
-        except Exception as exc:
-            print(f"[Chatbot DB] Query error: {exc}")
-            db_data = []
+        # Execute SQL (with 1 retry on DB error)
+        db_data = []
+        for _attempt in range(2):
+            try:
+                db_data = execute_query(sql, fetch=True) or []
+                break
+            except Exception as exc:
+                err_msg = str(exc)
+                print(f"[Chatbot DB] Query error (attempt {_attempt + 1}): {err_msg}")
+                if _attempt == 0 and self._sql_engine:
+                    print("[Chatbot DB] Retrying with error feedback to LLM...")
+                    ok2, sql2, _ = self._sql_engine.regenerate(
+                        message, history, sql, err_msg, profile, summary
+                    )
+                    if ok2 and sql2:
+                        try:
+                            sql = validate_sql(sql2)
+                        except SQLValidationError:
+                            break
+                    else:
+                        break
 
         # Check data quality
         is_poor, found_schools = check_data_quality(db_data)
+
+        # Force poor if query is about topics not stored in our DB
+        msg_lower = message.lower()
+        if not is_poor and any(kw in msg_lower for kw in _TOPICS_NOT_IN_DB):
+            is_poor = True
+            print(f"[Chatbot] Topic not in DB detected, forcing is_poor=True")
 
         if is_poor:
             prompt = self._build_poor_prompt(message, history, found_schools, summary)
@@ -217,26 +257,48 @@ class ChatbotEngine:
             yield "Sorry, I couldn't generate a valid query. Please try rephrasing your question."
             return
 
-        # Execute SQL
-        try:
-            db_data = execute_query(sql, fetch=True) or []
-            print(f"[Chatbot SQL] Executed. Found {len(db_data)} rows.")
-        except Exception as exc:
-            print(f"[Chatbot DB] Query error: {exc}")
-            db_data = []
+        # Execute SQL (with 1 retry on DB error)
+        db_data = []
+        for _attempt in range(2):
+            try:
+                db_data = execute_query(sql, fetch=True) or []
+                print(f"[Chatbot SQL] Executed. Found {len(db_data)} rows.")
+                break
+            except Exception as exc:
+                err_msg = str(exc)
+                print(f"[Chatbot DB] Query error (attempt {_attempt + 1}): {err_msg}")
+                if _attempt == 0 and self._sql_engine:
+                    print("[Chatbot DB] Retrying with error feedback to LLM...")
+                    ok2, sql2, _ = self._sql_engine.regenerate(
+                        message, history, sql, err_msg, profile, summary
+                    )
+                    if ok2 and sql2:
+                        try:
+                            sql = validate_sql(sql2)
+                        except SQLValidationError:
+                            break
+                    else:
+                        break
 
         # Check data quality
         is_poor, found_schools = check_data_quality(db_data)
 
+        # Force poor if query is about topics not stored in our DB
+        msg_lower = message.lower()
+        if not is_poor and any(kw in msg_lower for kw in _TOPICS_NOT_IN_DB):
+            is_poor = True
+            print(f"[Chatbot] Topic not in DB detected, forcing is_poor=True")
+
         if is_poor:
             prompt = self._build_poor_prompt(message, history, found_schools, summary)
             yield from self._gemini.stream(prompt)
-            yield f"\n\n<<ONLINE_SEARCH|{message}>>"
+            yield f"<<ONLINE_SEARCH|{message}>>"
             return
 
         # Build response prompt based on sub-intent
         prompt = self._build_domain_prompt(message, history, profile, summary, sub_intent, db_data)
-        yield from self._gemini.stream(prompt)
+        max_tokens = 6000 if sub_intent in ("COMPARE", "PROFILE_MATCH") else 3000
+        yield from self._gemini.stream(prompt, max_tokens=max_tokens)
 
     # ------------------------------------------------------------------
     # Prompt builders
@@ -248,10 +310,14 @@ class ChatbotEngine:
         history_str = format_history(history, limit=5, summary=summary)
         profile_section = format_user_profile(profile)
 
+        print(f"[Engine] _build_domain_prompt: sub_intent={sub_intent}, db_rows={len(db_data)}, has_profile={bool(profile)}")
+        if profile:
+            print(f"[Engine] profile keys: {list(profile.keys())}")
+
         # Choose prompt template based on sub-intent
         if sub_intent == "COMPARE":
             template = COMPARE_PROMPT
-        elif sub_intent == "PROFILE_MATCH" and profile:
+        elif sub_intent == "PROFILE_MATCH":
             template = DOMAIN_PROFILE_PROMPT
         elif sub_intent == "SINGLE_UNIVERSITY" or len(db_data) <= 2:
             template = DOMAIN_SINGLE_PROMPT
@@ -271,6 +337,7 @@ class ChatbotEngine:
         if template == DOMAIN_LISTING_PROMPT:
             kwargs["result_count"] = len(db_data)
 
+        print(f"[Engine] Using template: {template.__class__.__name__ if hasattr(template, '__class__') else type(template).__name__} | sub_intent={sub_intent}")
         return template.format(**kwargs)
 
     def _build_poor_prompt(self, message: str, history: List[Dict], found_schools: str, summary: str) -> str:

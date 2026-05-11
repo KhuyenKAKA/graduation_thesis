@@ -58,7 +58,6 @@ print(f"[OK] Inserted/resolved {len(major_id_map)} majors:")
 for name, mid in major_id_map.items():
     print(f"     [{mid}] {name}")
 
-# ── Step 3: Crawl API (4 pages) and link universities ─────
 BASE_URL = (
     "https://www.topuniversities.com/rankings/endpoint"
     "?nid=4114613&page={page}&items_per_page=150&tab=indicators"
@@ -123,10 +122,10 @@ for page in range(4):
         for major_id in major_id_map.values():
             cursor.execute(
                 """
-                INSERT IGNORE INTO university_majors (university_id, major_id, title)
-                VALUES (%s, %s, %s)
+                INSERT IGNORE INTO university_majors (university_id, major_id)
+                VALUES (%s, %s, %)
                 """,
-                (uni_id, major_id, title)
+                (uni_id, major_id)
             )
         total_linked += 1
 

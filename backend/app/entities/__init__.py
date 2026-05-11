@@ -1,16 +1,16 @@
 """
 Entity layer — OOP representations of database tables.
-
+ 
 Each entity class mirrors a DB table row and exposes:
   - Typed fields with defaults
   - from_dict() classmethod: construct from a raw DB row / dict
   - to_dict()             : serialize back to plain dict
   - Business methods / computed properties
-
+ 
 Import everything via:
     from app.entities import User, University, Country, StudyBackground, ...
 """
-
+ 
 from app.entities.user import User
 from app.entities.university import University
 from app.entities.country import Country
@@ -21,7 +21,11 @@ from app.entities.indicator import Indicator
 from app.entities.score import Score
 from app.entities.score_type import ScoreType
 from app.entities.scholarship import Scholarship
-
+from app.entities.refresh_token import RefreshToken
+from app.entities.chat_session import ChatSession
+from app.entities.chat_message import ChatMessage
+from app.entities.chat_summary import ChatSummary
+ 
 __all__ = [
     "User",
     "University",
@@ -33,4 +37,8 @@ __all__ = [
     "Score",
     "ScoreType",
     "Scholarship",
+    "RefreshToken",
+    "ChatSession",
+    "ChatMessage",
+    "ChatSummary",
 ]

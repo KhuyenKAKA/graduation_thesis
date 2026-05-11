@@ -49,7 +49,7 @@ class TextToSQLEngine:
         prompt = self._build_prompt(question, history_str, entity_context, profile_hint)
 
         print(f"[SQL-Gen] prompt_len={len(prompt)} chars (~{len(prompt)//4} tokens)")
-        raw = self._call(prompt)
+        raw = self._call(prompt, max_tokens=8192)
         if not raw:
             print("[SQL-Gen] ERROR: Gemini returned None/empty")
             return False, "", None
@@ -139,9 +139,24 @@ class TextToSQLEngine:
             val = profile.get(col)
             if val is not None:
                 parts.append(f"{col.upper()}={val}")
+        lang_parts = []
+        if profile.get("main_lang"):
+            lang_parts.append(f"main_lang={profile['main_lang']}")
+        if profile.get("add_lang"):
+            lang_parts.append(f"second_lang={profile['add_lang']}")
+        result = ""
+        if profile.get("country"):
+            result += f"\nUSER COUNTRY: {profile['country']}"
         if parts:
-            return f"\nUSER PROFILE: {', '.join(parts)}"
-        return ""
+            result += f"\nUSER PROFILE: {', '.join(parts)}"
+        if lang_parts:
+            result += f"\nUSER LANGUAGES: {', '.join(lang_parts)}"
+            if profile.get("add_lang"):
+                result += (
+                    f"\nNOTE: User speaks {profile['add_lang']} as a second language. "
+                    "Include universities from countries where this language is official or widely used."
+                )
+        return result
 
     def _parse_response(self, raw: str) -> Tuple[bool, str, Optional[str]]:
         """Parse LLM response to extract SQL or clarification."""
@@ -172,4 +187,31 @@ class TextToSQLEngine:
 
         print("[SQL-Gen] FAILED: could not extract SQL from response")
         return False, "", None
+
+    def regenerate(
+        self,
+        question: str,
+        history: List[Dict],
+        failed_sql: str,
+        error_msg: str,
+        user_profile: Optional[Dict] = None,
+        history_summary: str = "",
+    ) -> Tuple[bool, str, Optional[str]]:
+        """Retry SQL generation after a DB error, feeding the error back to the LLM."""
+        history_str = self._format_history(history, history_summary)
+        entity_context = self._extract_entity_context(history)
+        profile_hint = self._format_profile_hint(user_profile)
+
+        base_prompt = self._build_prompt(question, history_str, entity_context, profile_hint)
+        retry_prompt = (
+            f"{base_prompt}\n\n"
+            f"PREVIOUS ATTEMPT FAILED:\nSQL: {failed_sql}\n"
+            f"ERROR: {error_msg}\n\n"
+            "Fix the SQL and return valid JSON again."
+        )
+        print(f"[SQL-Gen] regenerate prompt_len={len(retry_prompt)}")
+        raw = self._call(retry_prompt, max_tokens=4096)
+        if not raw:
+            return False, "", None
+        return self._parse_response(raw)
  

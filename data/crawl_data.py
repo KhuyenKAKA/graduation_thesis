@@ -7,7 +7,7 @@ file = "raw_data_visualize_1.json"
 data = None
 with open(os.path.join(folder,file),'r') as f:
     data = json.load(f)
-    print("Load sucessful")
+    print("Load successful")
 print(len(data))
 url = "https://www.topuniversities.com/rankings/endpoint?nid=4114613&page=1&items_per_page=150&tab=indicators&region=&countries=&cities=&search=&star=&sort_by=&order_by=&program_type=&scholarship=&fee=&english_score=&academic_score=&mix_student=&loggedincache=7047458-1778000320765&study_level=&subjects="
 

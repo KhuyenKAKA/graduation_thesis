@@ -192,7 +192,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { userAPI, countryAPI, studyBGAPI } from '@/services/api'
+import { userAPI, countryAPI } from '@/services/api'
 import { message } from 'ant-design-vue'
 import Header from '@/components/Header.vue'
 import Footer from '@/components/Footer.vue'
@@ -259,23 +259,20 @@ const form = ref({
 
 const populateForm = (data) => {
   const fields = ['first_name','last_name','email','image','phone_number','gender',
-                  'dob','country_id','main_lang','add_lang','ethnic_group','special']
+                  'dob','country_id','main_lang','add_lang','ethnic_group','special','role_id']
   fields.forEach(k => { if (data[k] !== undefined) form.value[k] = data[k] })
-
-  // Backend returns role_type, form uses role_id
-  if (data.role_type !== undefined) form.value.role_id = data.role_type
 
   if (data.dob) {
     // Normalize to YYYY-MM-DD for <input type="date">
     form.value.dob = data.dob.split('T')[0]
   }
-}
 
-const populateStudy = (sb) => {
-  if (!sb) return
-  Object.keys(form.value.study).forEach(k => {
-    if (sb[k] !== undefined) form.value.study[k] = sb[k]
-  })
+  if (data.study_background) {
+    const sb = data.study_background
+    Object.keys(form.value.study).forEach(k => {
+      if (sb[k] !== undefined) form.value.study[k] = sb[k]
+    })
+  }
 }
 
 onMounted(async () => {
@@ -286,13 +283,8 @@ onMounted(async () => {
   }
   if (!isEdit.value) return
   try {
-    const [userData, studyData] = await Promise.allSettled([
-      userAPI.getUser(userId.value),
-      studyBGAPI.getByUserId(userId.value)
-    ])
-    if (userData.status === 'fulfilled') populateForm(userData.value)
-    else message.warning('Could not load account data')
-    if (studyData.status === 'fulfilled') populateStudy(studyData.value)
+    const res = await userAPI.getUser(userId.value)
+    populateForm(res.data)
   } catch {
     message.warning('Could not load account data')
   }
@@ -305,7 +297,6 @@ const handleSubmit = async () => {
       first_name: form.value.first_name,
       last_name: form.value.last_name,
       email: form.value.email,
-      image: form.value.image || undefined,
       phone_number: form.value.phone_number || null,
       country_id: form.value.country_id || null,
       gender: form.value.gender,

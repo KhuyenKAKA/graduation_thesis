@@ -8,11 +8,11 @@ SCHEMA_CONTEXT = """
 Table: countries
   - id (PK, INT)
   - name (VARCHAR): English country name, e.g. 'United States', 'United Kingdom'
+  - region_id (INT): Region code — 1=Asia, 2=Europe, 3=North America, 4=Latin America, 5=Oceania, 6=Africa
 
 Table: universities
   - id (PK, INT)
   - name (VARCHAR): Full university name
-  - region (ENUM): 'Asia','Europe','North America','Latin America','Oceania','Africa'
   - country_id (FK -> countries.id)
   - city (VARCHAR)
   - overall_score (FLOAT): QS-style overall score 0-100
@@ -50,9 +50,9 @@ Table: scholarships           -- structured scholarship records (one row per sch
   - id (PK, INT AUTO_INCREMENT)
   - university_id (FK -> universities.id)
   - name (TEXT): Scholarship name
-  - value (DOUBLE): Annual award value in USD
-  - duration (TEXT): Duration of the award, e.g. '4 years', '1 year'
-  - criteria (TEXT): Eligibility criteria description
+  - value (VARCHAR): Award value including currency symbol, e.g. '$45,000', '£18,622', 'CHF 4800'
+  - duration (INT): Duration in years, e.g. 1, 2, 4
+  - criteria (INT): Degree level eligibility — 1 = Bachelor, 2 = Master
 
 Table: score_types            -- category names for score groups
   - id (PK, INT)
