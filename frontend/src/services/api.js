@@ -83,6 +83,9 @@ export const userAPI = {
   updateUser(userId, payload) {
     return api.put(`/users/${userId}`, payload).then(r => r.data)
   },
+  deleteUser(userId) {
+    return api.delete(`/users/${userId}`).then(r => r.data)
+  },
   uploadAvatar(file) {
     const form = new FormData()
     form.append('file', file)

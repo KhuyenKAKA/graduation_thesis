@@ -365,14 +365,22 @@ const confirmDeleteAccount = (acc) => {
 
 const executeDelete = async () => {
   if (!deleteTarget.value) return
-  if (deleteType.value === 'university') {
-    universities.value = universities.value.filter(u => u.id !== deleteTarget.value.id)
-    message.success(`"${deleteTarget.value.name}" has been removed`)
-  } else {
-    accounts.value = accounts.value.filter(a => a.id !== deleteTarget.value.id)
-    message.success(`Account "${deleteTarget.value.email}" has been removed`)
-  }
+  const target = deleteTarget.value
   deleteTarget.value = null
+  try {
+    if (deleteType.value === 'university') {
+      await universityAPI.delete(target.id)
+      universities.value = universities.value.filter(u => u.id !== target.id)
+      message.success(`"${target.name}" has been removed`)
+    } else {
+      await userAPI.deleteUser(target.id)
+      accounts.value = accounts.value.filter(a => a.id !== target.id)
+      message.success(`Account "${target.email}" has been removed`)
+    }
+  } catch (err) {
+    const detail = err.response?.data?.detail
+    message.error(detail ? String(detail) : 'Failed to delete. Please try again.')
+  }
 }
 
 const openAddModal = () => router.push('/admin/university/new')

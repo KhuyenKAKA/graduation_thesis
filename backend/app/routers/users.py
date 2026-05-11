@@ -363,3 +363,19 @@ async def admin_update_user(
 
     updated = UserModel.get_user_by_id(db, user_id)
     return updated.to_dict()
+
+
+@router.delete("/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def admin_delete_user(
+    user_id: int,
+    current_user: Dict[str, Any] = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Delete a user account (admin only)."""
+    if not UserModel.is_admin(current_user.get("role_type", 1)):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
+    if current_user['id'] == user_id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Cannot delete your own account")
+    deleted = UserModel.delete_user(db, user_id)
+    if not deleted:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
