@@ -126,7 +126,7 @@ export const universityAPI = {
     return api.get('/universities/regions')
   },
   getCountriesByRegion(region = null) {
-    return api.get('/universities/countries-by-region', { params: region ? { region } : {} })
+    return api.get('/universities/countries-by-region', { params: region ? { region_id: region } : {} })
   },
   getEntryRequirements(id, degreeType = 1) {
     return api.get(`/universities/${id}/entry-requirements`, { params: { degree_type: degreeType } })
