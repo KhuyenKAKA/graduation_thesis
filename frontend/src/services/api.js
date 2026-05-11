@@ -85,11 +85,11 @@ export const userAPI = {
 }
 
 export const universityAPI = {
-  getAll(limit = 50) {
-    return api.get('/universities', { params: { limit } })
+  getAll({ page = 1, limit = 20 } = {}) {
+    return api.get('/universities', { params: { page, limit } })
   },
-  search(query) {
-    return api.get('/universities/search', { params: { q: query } })
+  search(query, { page = 1, limit = 20 } = {}) {
+    return api.get('/universities/search', { params: { q: query, page, limit } })
   },
   filter(filters) {
     // Serialize array params as repeated keys for FastAPI List[str]

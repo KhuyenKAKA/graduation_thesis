@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.exc import OperationalError, InterfaceError
 from app.schemas.university import (
     UniversityListResponse,
+    PaginatedUniversityResponse,
     UniversityDetailResponse,
     UniversityCompareRequest,
     EntryRequirementsResponse,
@@ -39,34 +40,35 @@ async def list_countries_by_region(
     return UniversityModel.get_countries_by_region(db, region_id=region_id)
 
 
-@router.get("", response_model=List[UniversityListResponse])
+@router.get("", response_model=PaginatedUniversityResponse)
 async def list_universities(
-    limit: int = Query(50, ge=1, le=2000, description="Maximum number of universities to return"),
+    page: int = Query(1, ge=1, description="Page number (1-indexed)"),
+    limit: int = Query(20, ge=1, le=2000, description="Number of universities per page"),
     db: Session = Depends(get_db),
 ):
     """
-    Get list of all universities with their basic information and scores.
+    Get paginated list of all universities with their basic information and scores.
 
     Args:
-        limit: Maximum number of results (default: 50, max: 200)
+        page: Page number starting from 1 (default: 1)
+        limit: Number of results per page (default: 20, max: 200)
 
     Returns:
-        List of UniversityListResponse
+        PaginatedUniversityResponse
     """
     try:
-        universities = UniversityModel.get_all_universities(db, limit=limit)
+        result = UniversityModel.get_all_universities(db, limit=limit, page=page)
     except (OperationalError, InterfaceError) as exc:
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=_DB_ERROR) from exc
 
-    if not universities:
-        return []
-
-    return universities
+    return result
 
 
-@router.get("/search", response_model=List[UniversityListResponse])
+@router.get("/search", response_model=PaginatedUniversityResponse)
 async def search_universities(
     q: str = Query(..., min_length=1, description="University name to search"),
+    page: int = Query(1, ge=1, description="Page number (1-indexed)"),
+    limit: int = Query(20, ge=1, le=200, description="Number of universities per page"),
     db: Session = Depends(get_db),
 ):
     """
@@ -74,9 +76,11 @@ async def search_universities(
 
     Args:
         q: University name or part of it
+        page: Page number starting from 1 (default: 1)
+        limit: Number of results per page (default: 20, max: 200)
 
     Returns:
-        List of matching UniversityListResponse
+        PaginatedUniversityResponse
 
     Raises:
         HTTPException 400: If search query is empty
@@ -88,13 +92,13 @@ async def search_universities(
         )
 
     try:
-        universities = UniversityModel.search_universities_by_name(db, q.strip())
+        result = UniversityModel.search_universities_by_name(db, q.strip(), limit=limit, page=page)
     except (OperationalError, InterfaceError) as exc:
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=_DB_ERROR) from exc
-    return universities
+    return result
 
 
-@router.get("/filter", response_model=List[UniversityListResponse])
+@router.get("/filter", response_model=PaginatedUniversityResponse)
 async def filter_universities(
     region_id: int = Query(None, description="Filter by region ID"),
     country: str = Query(None, description="Filter by country"),
@@ -107,10 +111,12 @@ async def filter_universities(
     fee_min: Optional[float] = Query(None, ge=0, description="Minimum tuition fee"),
     fee_max: Optional[float] = Query(None, ge=0, description="Maximum tuition fee"),
     scholarship: Optional[str] = Query(None, description="Scholarship availability: 'yes' or 'no'"),
+    page: int = Query(1, ge=1, description="Page number (1-indexed)"),
+    limit: int = Query(20, ge=1, le=200, description="Number of universities per page"),
     db: Session = Depends(get_db),
 ):
     try:
-        universities = UniversityModel.filter_universities(
+        result = UniversityModel.filter_universities(
             db,
             region_id=region_id,
             country=country,
@@ -123,10 +129,12 @@ async def filter_universities(
             fee_min=fee_min,
             fee_max=fee_max,
             scholarship=scholarship,
+            limit=limit,
+            page=page,
         )
     except (OperationalError, InterfaceError) as exc:
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=_DB_ERROR) from exc
-    return universities
+    return result
 
 
 @router.get("/{university_id}/ranking-scores")

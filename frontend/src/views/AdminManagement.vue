@@ -323,8 +323,8 @@ watch(activeTab,   () => { uniPage.value = 1; accPage.value = 1 })
 const loadUniversities = async () => {
   loading.value = true
   try {
-    const res = await universityAPI.getAll(2000)
-    universities.value = Array.isArray(res) ? res : (res.data || [])
+    const res = await universityAPI.getAll({ limit: 2000 })
+    universities.value = res.data?.data || res.data || []
   } catch {
     universities.value = MOCK_UNIS
   } finally {

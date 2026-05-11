@@ -202,7 +202,7 @@
       <div class="pagination-container">
         <div class="pagination-left">
           <label>Results per page:</label>
-          <select v-model.number="perPage" class="per-page-select">
+          <select :value="perPage" @change="changePerPage(Number($event.target.value))" class="per-page-select">
             <option :value="10">10</option>
             <option :value="30">30</option>
             <option :value="50">50</option>
@@ -210,12 +210,12 @@
           <span class="page-info">{{ pageStart }} - {{ pageEnd }} of {{ totalResults }}</span>
         </div>
         <div class="pagination-right">
-          <button class="page-btn" :disabled="currentPage === 1" @click="currentPage--">‹</button>
+          <button class="page-btn" :disabled="currentPage === 1" @click="changePage(currentPage - 1)">‹</button>
           <button v-for="p in visiblePages" :key="p" :class="['page-btn', { active: p === currentPage, dots: p === '...' }]"
-            :disabled="p === '...'" @click="p !== '...' && (currentPage = p)">
+            :disabled="p === '...'" @click="p !== '...' && changePage(p)">
             {{ p }}
           </button>
-          <button class="page-btn" :disabled="currentPage === totalPages" @click="currentPage++">›</button>
+          <button class="page-btn" :disabled="currentPage === totalPages" @click="changePage(currentPage + 1)">›</button>
         </div>
       </div>
     </section>
@@ -457,15 +457,14 @@ const resetFilters = () => {
   }
   loadCountries(null)
 }
-const totalResults = computed(() => universities.value.length)
-const totalPages = computed(() => Math.ceil(totalResults.value / perPage.value))
-const pageStart = computed(() => (currentPage.value - 1) * perPage.value + 1)
+const totalResults = ref(0)
+const currentMode = ref('all') // 'all' | 'search' | 'filter'
+const currentFiltersSnapshot = ref({})
+const totalPages = computed(() => Math.max(1, Math.ceil(totalResults.value / perPage.value)))
+const pageStart = computed(() => totalResults.value === 0 ? 0 : (currentPage.value - 1) * perPage.value + 1)
 const pageEnd = computed(() => Math.min(currentPage.value * perPage.value, totalResults.value))
 
-const paginatedUniversities = computed(() => {
-  const start = (currentPage.value - 1) * perPage.value
-  return universities.value.slice(start, start + perPage.value)
-})
+const paginatedUniversities = computed(() => universities.value)
 
 const visiblePages = computed(() => {
   const pages = []
@@ -518,15 +517,41 @@ onMounted(async () => {
   }
 })
 
-const loadUniversities = async () => {
+const _fetchPage = async () => {
   loading.value = true
   try {
-    const response = await universityAPI.getAll(2000)
-    universities.value = response.data.map(u => normalizeUniversity(u))
+    let response
+    if (currentMode.value === 'search') {
+      response = await universityAPI.search(searchQuery.value, { page: currentPage.value, limit: perPage.value })
+    } else if (currentMode.value === 'filter') {
+      response = await universityAPI.filter({ ...currentFiltersSnapshot.value, page: currentPage.value, limit: perPage.value })
+    } else {
+      response = await universityAPI.getAll({ page: currentPage.value, limit: perPage.value })
+    }
+    const result = response.data
+    universities.value = result.data.map(u => normalizeUniversity(u))
+    totalResults.value = result.total
   } catch (err) {
     const detail = err.response?.data?.detail || 'Cannot connect to the database. Please try again later.'
     message.error(detail)
   } finally { loading.value = false }
+}
+
+const changePage = (page) => {
+  currentPage.value = page
+  _fetchPage()
+}
+
+const changePerPage = (newLimit) => {
+  perPage.value = Number(newLimit)
+  currentPage.value = 1
+  _fetchPage()
+}
+
+const loadUniversities = async () => {
+  currentMode.value = 'all'
+  currentPage.value = 1
+  await _fetchPage()
 }
 
 const loadRegions = async () => {
@@ -550,16 +575,10 @@ const onRegionChange = () => {
 
 const handleSearch = async () => {
   if (!searchQuery.value.trim()) { loadUniversities(); activeFilters.value = []; return }
-  loading.value = true
-  try {
-    const response = await universityAPI.search(searchQuery.value)
-    universities.value = response.data.map(u => normalizeUniversity(u))
-    currentPage.value = 1
-    activeFilters.value = []
-  } catch (err) {
-    const detail = err.response?.data?.detail || 'Cannot connect to the database. Please try again later.'
-    message.error(detail)
-  } finally { loading.value = false }
+  currentMode.value = 'search'
+  currentPage.value = 1
+  activeFilters.value = []
+  await _fetchPage()
 }
 
 let searchDebounceTimer = null
@@ -575,42 +594,37 @@ const clearSearch = () => {
 }
 
 const applyFilters = async () => {
-  loading.value = true
-  try {
-    const rng = rankingOptions.find(r => r.label === filterForm.value.rankingRange)
-    const filters = {
-      region_id: filterForm.value.region_id || undefined,
-      country: filterForm.value.country || undefined,
-      city: filterForm.value.city || undefined,
-      min_rank: rng ? rng.min : (filterForm.value.minRank || undefined),
-      max_rank: rng ? rng.max : (filterForm.value.maxRank || undefined),
-      english_tests: filterForm.value.englishTests.length ? filterForm.value.englishTests : undefined,
-      academic_tests: filterForm.value.academicTests.length ? filterForm.value.academicTests : undefined,
-      min_international_pct: isAuthenticated.value && filterForm.value.studentMixMin > 0 ? filterForm.value.studentMixMin : undefined,
-      fee_min: isAuthenticated.value && filterForm.value.feeMin != null ? filterForm.value.feeMin : undefined,
-      fee_max: isAuthenticated.value && filterForm.value.feeMax != null ? filterForm.value.feeMax : undefined,
-      scholarship: isAuthenticated.value && filterForm.value.scholarship ? filterForm.value.scholarship : undefined,
-    }
-    const response = await universityAPI.filter(filters)
-    universities.value = response.data.map(u => normalizeUniversity(u))
-    showFilterModal.value = false
-    currentPage.value = 1
-    activeFilters.value = []
-    if (filters.region_id) activeFilters.value.push({ label: 'Region', value: regionOptions.value.find(r => r.id === filters.region_id)?.name || filters.region_id })
-    if (filters.country) activeFilters.value.push({ label: 'Country', value: filters.country })
-    if (filters.city) activeFilters.value.push({ label: 'City', value: filters.city })
-    if (filters.min_rank) activeFilters.value.push({ label: 'Min Rank', value: filters.min_rank })
-    if (filters.max_rank) activeFilters.value.push({ label: 'Max Rank', value: filters.max_rank })
-    if (filters.english_tests) filters.english_tests.forEach(t => activeFilters.value.push({ label: 'English', value: t }))
-    if (filters.academic_tests) filters.academic_tests.forEach(t => activeFilters.value.push({ label: 'Academic', value: t }))
-    if (filters.min_international_pct) activeFilters.value.push({ label: 'International', value: `≥${filters.min_international_pct}%` })
-    if (filters.fee_min != null) activeFilters.value.push({ label: 'Fee Min', value: `$${filters.fee_min}` })
-    if (filters.fee_max != null) activeFilters.value.push({ label: 'Fee Max', value: `$${filters.fee_max}` })
-    if (filters.scholarship) activeFilters.value.push({ label: 'Scholarship', value: filters.scholarship === 'yes' ? 'Yes' : 'No' })
-  } catch (err) {
-    const detail = err.response?.data?.detail || 'Cannot connect to the database. Please try again later.'
-    message.error(detail)
-  } finally { loading.value = false }
+  const rng = rankingOptions.find(r => r.label === filterForm.value.rankingRange)
+  const filters = {
+    region_id: filterForm.value.region_id || undefined,
+    country: filterForm.value.country || undefined,
+    city: filterForm.value.city || undefined,
+    min_rank: rng ? rng.min : (filterForm.value.minRank || undefined),
+    max_rank: rng ? rng.max : (filterForm.value.maxRank || undefined),
+    english_tests: filterForm.value.englishTests.length ? filterForm.value.englishTests : undefined,
+    academic_tests: filterForm.value.academicTests.length ? filterForm.value.academicTests : undefined,
+    min_international_pct: isAuthenticated.value && filterForm.value.studentMixMin > 0 ? filterForm.value.studentMixMin : undefined,
+    fee_min: isAuthenticated.value && filterForm.value.feeMin != null ? filterForm.value.feeMin : undefined,
+    fee_max: isAuthenticated.value && filterForm.value.feeMax != null ? filterForm.value.feeMax : undefined,
+    scholarship: isAuthenticated.value && filterForm.value.scholarship ? filterForm.value.scholarship : undefined,
+  }
+  currentFiltersSnapshot.value = Object.fromEntries(Object.entries(filters).filter(([, v]) => v !== undefined))
+  currentMode.value = 'filter'
+  currentPage.value = 1
+  showFilterModal.value = false
+  activeFilters.value = []
+  if (filters.region_id) activeFilters.value.push({ label: 'Region', value: regionOptions.value.find(r => r.id === filters.region_id)?.name || filters.region_id })
+  if (filters.country) activeFilters.value.push({ label: 'Country', value: filters.country })
+  if (filters.city) activeFilters.value.push({ label: 'City', value: filters.city })
+  if (filters.min_rank) activeFilters.value.push({ label: 'Min Rank', value: filters.min_rank })
+  if (filters.max_rank) activeFilters.value.push({ label: 'Max Rank', value: filters.max_rank })
+  if (filters.english_tests) filters.english_tests.forEach(t => activeFilters.value.push({ label: 'English', value: t }))
+  if (filters.academic_tests) filters.academic_tests.forEach(t => activeFilters.value.push({ label: 'Academic', value: t }))
+  if (filters.min_international_pct) activeFilters.value.push({ label: 'International', value: `≥${filters.min_international_pct}%` })
+  if (filters.fee_min != null) activeFilters.value.push({ label: 'Fee Min', value: `$${filters.fee_min}` })
+  if (filters.fee_max != null) activeFilters.value.push({ label: 'Fee Max', value: `$${filters.fee_max}` })
+  if (filters.scholarship) activeFilters.value.push({ label: 'Scholarship', value: filters.scholarship === 'yes' ? 'Yes' : 'No' })
+  await _fetchPage()
 }
 
 const sortUniversities = () => {

@@ -57,27 +57,60 @@ def _uni_to_dict(uni: University) -> Dict[str, Any]:
 class UniversityModel:
 
     @staticmethod
-    def get_all_universities(db: Session, limit: int = 50) -> List[Dict[str, Any]]:
-        unis = (
+    def get_all_universities(
+        db: Session,
+        limit: int = 20,
+        page: int = 1,
+    ) -> Dict[str, Any]:
+        offset = (page - 1) * limit
+        base_query = (
             db.query(University)
-            .options(*_eager_opts())
             .order_by(University.rank_int.asc(), University.id.asc())
+        )
+        total = base_query.count()
+        unis = (
+            base_query
+            .options(*_eager_opts())
+            .offset(offset)
             .limit(limit)
             .all()
         )
-        return [_uni_to_dict(u) for u in unis]
+        return {
+            "data": [_uni_to_dict(u) for u in unis],
+            "total": total,
+            "page": page,
+            "limit": limit,
+            "total_pages": (total + limit - 1) // limit,
+        }
 
     @staticmethod
-    def search_universities_by_name(db: Session, name: str) -> List[Dict[str, Any]]:
-        unis = (
+    def search_universities_by_name(
+        db: Session,
+        name: str,
+        limit: int = 20,
+        page: int = 1,
+    ) -> Dict[str, Any]:
+        offset = (page - 1) * limit
+        base_query = (
             db.query(University)
-            .options(*_eager_opts())
             .filter(University.name.ilike(f"%{name}%"))
             .order_by(University.rank_int.asc())
-            .limit(50)
+        )
+        total = base_query.count()
+        unis = (
+            base_query
+            .options(*_eager_opts())
+            .offset(offset)
+            .limit(limit)
             .all()
         )
-        return [_uni_to_dict(u) for u in unis]
+        return {
+            "data": [_uni_to_dict(u) for u in unis],
+            "total": total,
+            "page": page,
+            "limit": limit,
+            "total_pages": (total + limit - 1) // limit,
+        }
 
     @staticmethod
     def get_regions(db: Session) -> List[dict]:
@@ -125,7 +158,9 @@ class UniversityModel:
         fee_min: Optional[float] = None,
         fee_max: Optional[float] = None,
         scholarship: Optional[str] = None,
-    ) -> List[Dict[str, Any]]:
+        limit: int = 20,
+        page: int = 1,
+    ) -> Dict[str, Any]:
         query = db.query(University).options(*_eager_opts())
 
         # Country/region filters require a join to countries
@@ -193,13 +228,22 @@ class UniversityModel:
                 University.detail_infor.has(DetailInfor.scholarship == False)
             )
 
+        offset = (page - 1) * limit
+        total = query.count()
         unis = (
             query
             .order_by(University.rank_int.asc(), University.id.asc())
-            .limit(2000)
+            .offset(offset)
+            .limit(limit)
             .all()
         )
-        return [_uni_to_dict(u) for u in unis]
+        return {
+            "data": [_uni_to_dict(u) for u in unis],
+            "total": total,
+            "page": page,
+            "limit": limit,
+            "total_pages": (total + limit - 1) // limit,
+        }
 
 
     @staticmethod

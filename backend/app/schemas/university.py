@@ -104,6 +104,15 @@ class UniversityListResponse(BaseModel):
     scores: Optional[Dict[str, Dict[str, Optional[float]]]] = None
 
 
+class PaginatedUniversityResponse(BaseModel):
+    """Schema for paginated university list response"""
+    data: List[UniversityListResponse]
+    total: int
+    page: int
+    limit: int
+    total_pages: int
+
+
 class UniversityFilter(BaseModel):
     """Schema for filtering universities"""
     region_id: Optional[int] = None
